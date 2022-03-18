@@ -1,0 +1,22 @@
+## Interface: 30300
+## Title: Hermes [|cffeda55fCore|r]
+## Notes: The core Hermes engine used for monitoring raid cooldowns.
+## OptionalDeps: Ace3, LibSharedMedia-3.0
+## LoadOnDemand: 0
+## SavedVariables: HermesDB2
+## DefaultState: enabled
+## Author: Kader (|cff808080bkader#6361|r)
+## Version: 2.6.8
+## X-Date: 2022-03-18 @ 06:50 PM |cff808080UTC|r
+## X-Credits: Virtual (Virtual#1157 @ US-Alleria)
+## X-Email: bkader@mail.com
+## X-Website: https://github.com/bkader/Hermes-WotLK
+## X-Discord: https://discord.gg/a8z5CyS3eW
+## X-Donate: |cff0079c1PayPal|r or |cff246a96Paysera|r at |cff20ff20bkader@mail.com|r
+
+Libs\Embeds.xml
+Locales\Locales.xml
+Hermes.lua
+Reincarnation.lua
+Talents.lua
+SpellMonitorDefaults.lua
