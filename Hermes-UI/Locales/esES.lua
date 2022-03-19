@@ -1,5 +1,5 @@
-﻿local AceLocale = LibStub:GetLibrary("AceLocale-3.0")
-local L = AceLocale:NewLocale("Hermes-UI", "esES", false)
+local AceLocale = LibStub:GetLibrary("AceLocale-3.0")
+local L = AceLocale:NewLocale("Hermes-UI", "esES") or AceLocale:NewLocale("Hermes-UI", "esMX")
 if not L then return end
 
 -- L["Add"] = "Add"
@@ -157,4 +157,3 @@ Features include:
 -- L["Bottom"] = "Bottom"
 -- L["Padding"] = "Padding"
 -- L["Top"] = "Top"
-

@@ -1,5 +1,4 @@
-﻿local AceLocale = LibStub:GetLibrary("AceLocale-3.0")
-local L = AceLocale:NewLocale("Hermes-UI", "zhTW", false)
+local L = LibStub("AceLocale-3.0"):NewLocale("Hermes-UI", "zhTW")
 if not L then return end
 
 L["Add"] = "加入" -- Needs review

@@ -1,12 +1,4 @@
--- English localization file for enUS
-local AceLocale = LibStub:GetLibrary("AceLocale-3.0")
-
-local debug = false
---[===[@debug@
-debug = true
---@end-debug@]===]
-
-local L = AceLocale:NewLocale("Hermes", "enUS", true, debug)
+local L = LibStub("AceLocale-3.0"):NewLocale("Hermes", "enUS", true)
 if not L then return end
 
 L["Add"] = true

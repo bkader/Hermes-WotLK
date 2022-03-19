@@ -3,7 +3,7 @@
 ## Notes: The core Hermes engine used for monitoring raid cooldowns.
 ## OptionalDeps: Ace3, LibSharedMedia-3.0
 ## LoadOnDemand: 0
-## SavedVariables: HermesDB2
+## SavedVariables: HermesDB
 ## DefaultState: enabled
 ## Author: Kader (|cff808080bkader#6361|r)
 ## Version: 2.6.8
@@ -14,7 +14,7 @@
 ## X-Discord: https://discord.gg/a8z5CyS3eW
 ## X-Donate: |cff0079c1PayPal|r or |cff246a96Paysera|r at |cff20ff20bkader@mail.com|r
 
-Libs\Embeds.xml
+Libs\Libs.xml
 Locales\Locales.xml
 Hermes.lua
 Reincarnation.lua

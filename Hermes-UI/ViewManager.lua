@@ -1,5 +1,8 @@
-local Hermes = LibStub("AceAddon-3.0"):GetAddon("Hermes")
-local UI = LibStub("AceAddon-3.0"):GetAddon("Hermes-UI")
+local Lib_AceAddon = LibStub("AceAddon-3.0", true)
+if not Lib_AceAddon then return end
+
+local Hermes = Lib_AceAddon:GetAddon("Hermes")
+local UI = Lib_AceAddon:GetAddon("Hermes-UI")
 local mod = UI:NewModule("ViewManager", "AceEvent-3.0", "AceTimer-3.0")
 
 local ACD = LibStub("AceConfigDialog-3.0")

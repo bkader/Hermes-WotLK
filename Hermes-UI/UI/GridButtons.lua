@@ -397,16 +397,26 @@ local backdrop = {
 	insets = {left = -1, right = -1, top = -1, bottom = -1}
 }
 
-local function frame_OnMouseDown(self, button)
-	self.resizer:StopMovingOrSizing()
-	self:StopMovingOrSizing()
-	self:StartSizing()
+local function resizer_OnEnter(self)
+	self:SetAlpha(1)
 end
 
-local function frame_OnMouseUp(self)
-	self.resizer:StopMovingOrSizing()
+local function resizer_OnLeave(self)
+	self:SetAlpha(0.35)
+end
+
+local function resizer_OnMouseDown(self, button)
 	self:StopMovingOrSizing()
-	mod:SetFrameToVirtualSize(self)
+	local frame = self:GetParent()
+	frame:StopMovingOrSizing()
+	frame:StartSizing()
+end
+
+local function resizer_OnMouseUp(self)
+	self:StopMovingOrSizing()
+	local frame = self:GetParent()
+	frame:StopMovingOrSizing()
+	mod:SetFrameToVirtualSize(frame)
 end
 
 function mod:CreateFrame()
@@ -428,14 +438,17 @@ function mod:CreateFrame()
 
 	frame:SetBackdrop(backdrop)
 
-	frame.resizer = CreateFrame("Frame", nil, frame)
+	frame.resizer = frame.resizer or CreateFrame("Frame", nil, frame)
 	frame.resizer:SetWidth(RESIZER_SIZE)
 	frame.resizer:SetHeight(RESIZER_SIZE)
+	frame.resizer:SetAlpha(0.35)
 	frame.resizer:EnableMouse(true)
 	frame.resizer:RegisterForDrag("LeftButton")
 	frame.resizer:SetPoint("BOTTOMRIGHT")
-	frame.resizer:SetScript("OnMouseDown", frame_OnMouseDown)
-	frame.resizer:SetScript("OnMouseUp", frame_OnMouseUp)
+	frame.resizer:SetScript("OnEnter", resizer_OnEnter)
+	frame.resizer:SetScript("OnLeave", resizer_OnLeave)
+	frame.resizer:SetScript("OnMouseDown", resizer_OnMouseDown)
+	frame.resizer:SetScript("OnMouseUp", resizer_OnMouseUp)
 	frame.resizer.texture = frame.resizer:CreateTexture()
 	frame.resizer.texture:SetTexture(IMAGE_RESIZE)
 	frame.resizer.texture:SetDrawLayer("OVERLAY")
@@ -1144,7 +1157,11 @@ function mod:RefreshTooltip()
 		end
 
 		GameTooltip:SetOwner(ToolTip, "ANCHOR_BOTTOMLEFT", GameTooltip:GetWidth())
-		GameTooltip:SetSpellByID(ability.id)
+		if ability.id < 0 then
+			GameTooltip:SetHyperlink("item:" .. (ability.id * -1) .. ":0:0:0:0:0:0:0")
+		else
+			GameTooltip:SetSpellByID(ability.id)
+		end
 		GameTooltip:Show()
 	end
 end

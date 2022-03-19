@@ -1,5 +1,4 @@
-﻿local AceLocale = LibStub:GetLibrary("AceLocale-3.0")
-local L = AceLocale:NewLocale("Hermes-UI", "deDE", false)
+local L = LibStub("AceLocale-3.0"):NewLocale("Hermes-UI", "deDE")
 if not L then return end
 
 L["Add"] = "hinzufügen" -- Needs review
@@ -157,4 +156,3 @@ Features include:
 -- L["Bottom"] = "Bottom"
 -- L["Padding"] = "Padding"
 -- L["Top"] = "Top"
-

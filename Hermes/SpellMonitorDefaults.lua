@@ -2,146 +2,175 @@ local AddonName, Hermes = ...
 
 local hero = (Hermes.Faction == "Alliance") and 32182 or 2825
 
+local duration_1s = {duration = 1}
+local duration_2s = {duration = 2}
+local duration_3s = {duration = 3}
+local duration_4s = {duration = 4}
+local duration_5s = {duration = 5}
+local duration_6s = {duration = 6}
+local duration_8s = {duration = 8}
+local duration_10s = {duration = 10}
+local duration_12s = {duration = 12}
+local duration_15s = {duration = 15}
+local duration_20s = {duration = 20}
+local duration_30s = {duration = 30}
+
+local duration_1m = {duration = 60}
+local duration_2m = {duration = 120}
+local duration_3m = {duration = 180}
+local duration_5m = {duration = 300}
+
 Hermes.SPELL_MONITOR_SCHEMA = {
 	["schema"] = 30300,
 	["revision"] = 2,
 	["spellmetadata"] = {
 
 		-- DEATHKNIGHT
-		[51052] = {duration = 10}, -- Anti-magic Zone
-		[49222] = {duration = 300}, -- Bone Shield
-		[49576] = {duration = 3}, -- Death Grip
-		[48792] = {duration = 12}, -- Icebound Fortitude
-		[49039] = {duration = 10}, -- Lichborne
-		[47528] = {duration = 4}, -- Mind Freeze
-		[56222] = {duration = 3}, -- Dark Command
-		[49016] = {duration = 30}, -- Hysteria
-		[48707] = {duration = 5}, -- Anti-Magic Shell
-		[51271] = {duration = 20}, -- Unbreakable Armor
-		[49206] = {duration = 30}, -- Summon Gargoyle
-		[55233] = {duration = 10}, -- Vamp Blood
-		[42650] = {duration = 4}, -- Army of the Dead
-		[49005] = {duration = 20}, -- Mark of Blood
-		[47476] = {duration = 3}, -- Strangulate
-		[45529] = {duration = 20}, -- Blood Tap
+		[51052] = duration_10s, -- Anti-magic Zone
+		[49222] = duration_5m, -- Bone Shield
+		[49576] = duration_3s, -- Death Grip
+		[48792] = duration_12s, -- Icebound Fortitude
+		[49039] = duration_10s, -- Lichborne
+		[47528] = duration_4s, -- Mind Freeze
+		[56222] = duration_3s, -- Dark Command
+		[49016] = duration_30s, -- Hysteria
+		[48707] = duration_5s, -- Anti-Magic Shell
+		[51271] = duration_20s, -- Unbreakable Armor
+		[49206] = duration_30s, -- Summon Gargoyle
+		[55233] = duration_10s, -- Vamp Blood
+		[42650] = duration_4s, -- Army of the Dead
+		[49005] = duration_20s, -- Mark of Blood
+		[47476] = duration_3s, -- Strangulate
+		[45529] = duration_20s, -- Blood Tap
 
 		-- DRUID
-		[16857] = {duration = 300}, -- Faerie Fire (Feral)
-		[17116] = {duration = 10}, -- Nature's Swiftness
-		[22812] = {duration = 12}, -- Barkskin
-		[22842] = {duration = 10}, -- Frenzied Regeneration
-		[29166] = {duration = 10}, -- Innervate
-		[33357] = {duration = 15}, -- Dash
-		[48447] = {duration = 8}, -- Tranquility
-		[50334] = {duration = 15}, -- Berserk
-		[5209] = {duration = 6}, -- Challenging Roar
-		[5229] = {duration = 10}, -- Enrage
-		[53201] = {duration = 10}, -- Starfall
-		[53227] = {duration = 6}, -- Typhoon
-		[61336] = {duration = 20}, -- Survival Instincts
-		[6795] = {duration = 3}, -- Growl
-		[8983] = {duration = 4}, -- Bash
-		[33831] = {duration = 30}, -- Force of Nature
+		[16857] = duration_5m, -- Faerie Fire (Feral)
+		[17116] = duration_10s, -- Nature's Swiftness
+		[22812] = duration_12s, -- Barkskin
+		[22842] = duration_10s, -- Frenzied Regeneration
+		[29166] = duration_10s, -- Innervate
+		[33357] = duration_15s, -- Dash
+		[48447] = duration_8s, -- Tranquility
+		[50334] = duration_15s, -- Berserk
+		[5209] = duration_6s, -- Challenging Roar
+		[5229] = duration_10s, -- Enrage
+		[53201] = duration_10s, -- Starfall
+		[53227] = duration_6s, -- Typhoon
+		[61336] = duration_20s, -- Survival Instincts
+		[6795] = duration_3s, -- Growl
+		[8983] = duration_4s, -- Bash
+		[33831] = duration_30s, -- Force of Nature
 
 		-- HUNTER
-		[60192] = {duration = 20}, -- Freezing Arrow
-		[34477] = {duration = 30}, -- Misdirection
-		[19574] = {duration = 10}, -- Bestial Wrath
-		[19263] = {duration = 5}, -- Deterrence
-		[13809] = {duration = 30}, -- Frost Trap
-		[3045] = {duration = 15}, -- Rapid Fire
-		[49067] = {duration = 30}, -- Explosive Trap
-		[34600] = {duration = 30}, -- Snake Trap
-		[34490] = {duration = 3}, -- Silencing Shot
+		[60192] = duration_20s, -- Freezing Arrow
+		[34477] = duration_30s, -- Misdirection
+		[19574] = duration_10s, -- Bestial Wrath
+		[19263] = duration_5s, -- Deterrence
+		[13809] = duration_30s, -- Frost Trap
+		[3045] = duration_15s, -- Rapid Fire
+		[49067] = duration_30s, -- Explosive Trap
+		[34600] = duration_30s, -- Snake Trap
+		[34490] = duration_3s, -- Silencing Shot
 
 		-- MAGE
-		[2139] = {duration = 8}, -- Counterspell
-		[45438] = {duration = 10}, -- Ice Block
-		[1953] = {duration = 1}, -- Blink
-		[12051] = {duration = 8}, -- Evocation
-		[66] = {duration = 3}, -- Invisibility
-		[55342] = {duration = 30}, -- Mirror Image
+		[2139] = duration_8s, -- Counterspell
+		[45438] = duration_10s, -- Ice Block
+		[1953] = duration_1s, -- Blink
+		[12051] = duration_8s, -- Evocation
+		[66] = duration_3s, -- Invisibility
+		[55342] = duration_30s, -- Mirror Image
 
 		-- PALADIN
-		[53601] = {duration = 30}, -- Sacred Shield
-		[498] = {duration = 12}, -- Divine Protection
-		[64205] = {duration = 10}, -- Divine Sacrifice
-		[642] = {duration = 12}, -- Divine Shield
-		[10278] = {duration = 10}, -- Hand of Protection
-		[1044] = {duration = 6}, -- Hand of Freedom
-		[6940] = {duration = 12}, -- Hand of Sacrifice
-		[1038] = {duration = 10}, -- Hand of Salvation
-		[31821] = {duration = 6}, -- Aura Mastery
-		[20066] = {duration = 60}, -- Repentance
-		[10308] = {duration = 6}, -- Hammer of Justice
-		[48817] = {duration = 3}, -- Holy Wrath
-		[31884] = {duration = 20}, -- Avenging Wrath
-		[54428] = {duration = 15}, -- Divine Plea
-		[62124] = {duration = 3}, -- Hand of Reckoning
-		[66233] = {duration = 120}, -- Ardent Defender
-		[31842] = {duration = 15}, -- Divine Illumination
+		[53601] = duration_30s, -- Sacred Shield
+		[498] = duration_12s, -- Divine Protection
+		[64205] = duration_10s, -- Divine Sacrifice
+		[642] = duration_12s, -- Divine Shield
+		[10278] = duration_10s, -- Hand of Protection
+		[1044] = duration_6s, -- Hand of Freedom
+		[6940] = duration_12s, -- Hand of Sacrifice
+		[1038] = duration_10s, -- Hand of Salvation
+		[31821] = duration_6s, -- Aura Mastery
+		[20066] = duration_1m, -- Repentance
+		[10308] = duration_6s, -- Hammer of Justice
+		[48817] = duration_3s, -- Holy Wrath
+		[31884] = duration_20s, -- Avenging Wrath
+		[54428] = duration_15s, -- Divine Plea
+		[62124] = duration_3s, -- Hand of Reckoning
+		[66233] = duration_2m, -- Ardent Defender
+		[31842] = duration_15s, -- Divine Illumination
 
 		-- PRIEST
-		[64044] = {duration = 3}, -- Psychic Horror
-		[15487] = {duration = 5}, -- Silence
-		[64843] = {duration = 8}, -- Divine Hymn
-		[6346] = {duration = 180}, -- Fear Ward
-		[47788] = {duration = 10}, -- Guardian Spirit
-		[64901] = {duration = 8}, -- Hymn of Hope
-		[33206] = {duration = 8}, -- Pain Suppression
-		[47585] = {duration = 6}, -- Dispersion
-		[10890] = {duration = 8}, -- Psychic Scream
-		[34433] = {duration = 15}, -- Shadowfiend
-		[586] = {duration = 10}, -- Fade
-		[10060] = {duration = 15}, -- Powers Infusion
-		[724] = {duration = 180}, -- Prayer of Mending
+		[64044] = duration_3s, -- Psychic Horror
+		[15487] = duration_5s, -- Silence
+		[64843] = duration_8s, -- Divine Hymn
+		[6346] = duration_3m, -- Fear Ward
+		[47788] = duration_10s, -- Guardian Spirit
+		[64901] = duration_8s, -- Hymn of Hope
+		[33206] = duration_8s, -- Pain Suppression
+		[47585] = duration_6s, -- Dispersion
+		[10890] = duration_8s, -- Psychic Scream
+		[34433] = duration_15s, -- Shadowfiend
+		[586] = duration_10s, -- Fade
+		[10060] = duration_15s, -- Powers Infusion
+		[724] = duration_3m, -- Prayer of Mending
 
 		-- ROGUE
-		[31224] = {duration = 5}, -- Cloak of Shadows
-		[8643] = {duration = 1}, -- Kidney Shot
-		[57934] = {duration = 30}, -- Tricks of the Trade
-		[1766] = {duration = 5}, -- Kick
-		[51690] = {duration = 2}, -- Killing Spree
-		[26669] = {duration = 15}, -- Evasion
-		[13877] = {duration = 15}, -- Blade Flurry
-		[13750] = {duration = 15}, -- Adrenaline Rush
-		[51722] = {duration = 10}, -- Dismantle
-		[11305] = {duration = 15}, -- Sprint
-		[2094] = {duration = 10}, -- Blind
-		[48659] = {duration = 6}, -- Feint
+		[31224] = duration_5s, -- Cloak of Shadows
+		[8643] = duration_1s, -- Kidney Shot
+		[57934] = duration_30s, -- Tricks of the Trade
+		[1766] = duration_5s, -- Kick
+		[51690] = duration_2s, -- Killing Spree
+		[26669] = duration_15s, -- Evasion
+		[13877] = duration_15s, -- Blade Flurry
+		[13750] = duration_15s, -- Adrenaline Rush
+		[51722] = duration_10s, -- Dismantle
+		[11305] = duration_15s, -- Sprint
+		[2094] = duration_10s, -- Blind
+		[48659] = duration_6s, -- Feint
 
 		-- SHAMAN
 		[hero] = {duration = 40}, -- Bloodlust/Heroism
-		[57994] = {duration = 2}, -- Wind Shear
-		[51514] = {duration = 30}, -- Hex
+		[57994] = duration_2s, -- Wind Shear
+		[51514] = duration_30s, -- Hex
 		[16190] = {duration = 13}, -- Mana Tide Totem
-		[16166] = {duration = 30}, -- Elemental Mastery
+		[16166] = duration_30s, -- Elemental Mastery
 		[51533] = {duration = 45}, -- Feral Spirit
-		[2894] = {duration = 120}, -- Fire Elemental Totem
+		[2894] = duration_2m, -- Fire Elemental Totem
 
 		-- WARLOCK
-		[48020] = {duration = 1}, -- Demonic Circle: Teleport
+		[48020] = duration_1s, -- Demonic Circle: Teleport
 		[47883] = {duration = 900}, -- Soulstone Resurrection
-		[47241] = {duration = 30}, -- Metamorphosis
-		[698] = {duration = 120}, -- Ritual of Summoning
-		[29893] = {duration = 60}, -- Ritual of Souls
+		[47241] = duration_30s, -- Metamorphosis
+		[698] = duration_2m, -- Ritual of Summoning
+		[29893] = duration_1m, -- Ritual of Souls
 
 		-- WARRIOR
-		[1161] = {duration = 6}, -- Challenging Shout
-		[12292] = {duration = 30}, -- Death Wish
-		[12323] = {duration = 6}, -- Piercing Howl
-		[1719] = {duration = 12}, -- Recklessness
-		[3411] = {duration = 10}, -- Intervene
-		[355] = {duration = 3}, -- Taunt
-		[46924] = {duration = 6}, -- Bladestorm
-		[5246] = {duration = 8}, -- Intimidating Shout
+		[1161] = duration_6s, -- Challenging Shout
+		[12292] = duration_30s, -- Death Wish
+		[12323] = duration_6s, -- Piercing Howl
+		[1719] = duration_12s, -- Recklessness
+		[3411] = duration_10s, -- Intervene
+		[355] = duration_3s, -- Taunt
+		[46924] = duration_6s, -- Bladestorm
+		[5246] = duration_8s, -- Intimidating Shout
 		[60970] = {duration = 0.1}, -- Heroic Fury
-		[64382] = {duration = 10}, -- Shattering Throw
-		[6552] = {duration = 4}, -- Pummel
-		[676] = {duration = 10}, -- Disarm
-		[70845] = {duration = 10}, -- Stoicism
-		[72] = {duration = 6}, -- Shield Bash
-		[871] = {duration = 12}, -- Shield Wall
+		[64382] = duration_10s, -- Shattering Throw
+		[6552] = duration_4s, -- Pummel
+		[676] = duration_10s, -- Disarm
+		[70845] = duration_10s, -- Stoicism
+		[72] = duration_6s, -- Shield Bash
+		[871] = duration_12s, -- Shield Wall
+
+		-- ITEMS -- TODO: FIXME
+		-- [10725] = {duration = 90}, -- Gnomish Battle Chicken
+		-- [54861] = duration_5s, -- Nitro Boosts
+		-- [67699] = duration_15s, -- Juggernaut/Satrina Normal
+		-- [67753] = duration_15s, -- Juggernaut/Satrina Heroic
+		-- [71586] = duration_10s, -- Corroded Skeleton Key
+		-- [71635] = duration_10s, -- sindy nm
+		-- [71638] = duration_10s, -- sindy hc
+		-- [75490] = duration_15s, -- GTS NM
+		-- [75495] = duration_15s, -- GTS HC
 	},
 	["requirements"] = {
 		-- level requirement
@@ -445,6 +474,18 @@ Hermes.SPELL_MONITOR_SCHEMA = {
 		[70845] = 60, -- Stoicism
 		[72] = 12, -- Shield Bash
 		[871] = 300, -- Shield Wall
+
+		-- ITEMS -- TODO: FIXME
+		-- [10725] = 1200, -- Gnomish Battle Chicken
+		-- [37863] = 3600, -- Direbrew's Remote
+		-- [54861] = 180, -- Nitro Boosts
+		-- [67699] = 180, -- Juggernaut/Satrina Normal
+		-- [67753] = 180, -- Juggernaut/Satrina Heroic
+		-- [71586] = 120, -- Corroded Skeleton Key
+		-- [71635] = 60, -- sindy nm
+		-- [71638] = 60, -- sindy hc
+		-- [75490] = 120, -- GTS NM
+		-- [75495] = 120, -- GTS HC
 	},
 	["adjustments"] = {}
 }

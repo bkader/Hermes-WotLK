@@ -95,18 +95,10 @@ function mod:OnInitialize()
 	--register as Hermes plugin
 	Hermes:RegisterHermesPlugin(
 		"UI",
-		function()
-			self:Enable()
-		end,
-		function()
-			self:Disable()
-		end,
-		function(dbplugins)
-			self:OnSetHermesPluginProfile(dbplugins)
-		end,
-		function()
-			return self:GetBlizzOptionsTable()
-		end
+		function() self:Enable() end,
+		function() self:Disable() end,
+		function(dbplugins) self:OnSetHermesPluginProfile(dbplugins) end,
+		function() return self:GetBlizzOptionsTable() end
 	)
 end
 

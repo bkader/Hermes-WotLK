@@ -1,6 +1,4 @@
-﻿-- English localization file for enUS
-local AceLocale = LibStub:GetLibrary("AceLocale-3.0")
-local L = AceLocale:NewLocale("Hermes", "ruRU", false)
+local L = LibStub("AceLocale-3.0"):NewLocale("Hermes", "ruRU")
 if not L then return end
 
 L["Add"] = "Добавить" -- Needs review
@@ -208,4 +206,3 @@ L["|cFFFF0000Hermes Warning|r"] = "|cFFFF0000Гермес Предупрежда
 L["|cFFFF2200Base Cooldown Required:|r A Base Cooldown is required to enable Spell Monitor support."] = "|cFFFF2200Требуется базовый кулдаун:|r требуются базовые кулдауны для включения поддержки мониторинга заклинаний." -- Needs review
 L["|cFFFF2200Base Cooldown Unknown:|r Hermes hasn't detected a cooldown for this spell yet."] = "|cFFFF2200Базовый кулдаун неизвестен:|r Гермес еще не обнаружил кулдаун для этого заклинания." -- Needs review
 L["|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."] = "|cFFFF3333Отсутствующие таланты:|r Гермес еще не проинспектировал игрока этого класса на информацию о талантах. Попробуйте позже, когда этот класс будет у Вас в группе." -- Needs review
-

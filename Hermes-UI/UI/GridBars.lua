@@ -1519,7 +1519,11 @@ function mod:RefreshTooltip()
 		end
 
 		GameTooltip:SetOwner(ToolTip, "ANCHOR_BOTTOMLEFT", GameTooltip:GetWidth())
-		GameTooltip:SetSpellByID(ability.id)
+		if ability.id < 0 then
+			GameTooltip:SetHyperlink("item:" .. (ability.id * -1) .. ":0:0:0:0:0:0:0")
+		else
+			GameTooltip:SetSpellByID(ability.id)
+		end
 		GameTooltip:Show()
 	end
 end

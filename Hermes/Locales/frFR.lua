@@ -1,6 +1,4 @@
-﻿-- English localization file for enUS
-local AceLocale = LibStub:GetLibrary("AceLocale-3.0")
-local L = AceLocale:NewLocale("Hermes", "frFR", false)
+local L = LibStub("AceLocale-3.0"):NewLocale("Hermes", "frFR")
 if not L then return end
 
 -- L["Add"] = "Add"
@@ -208,4 +206,3 @@ Hermes would need you to...
 -- L["|cFFFF2200Base Cooldown Required:|r A Base Cooldown is required to enable Spell Monitor support."] = "|cFFFF2200Base Cooldown Required:|r A Base Cooldown is required to enable Spell Monitor support."
 -- L["|cFFFF2200Base Cooldown Unknown:|r Hermes hasn't detected a cooldown for this spell yet."] = "|cFFFF2200Base Cooldown Unknown:|r Hermes hasn't detected a cooldown for this spell yet."
 -- L["|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."] = "|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."
-

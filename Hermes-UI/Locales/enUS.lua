@@ -1,12 +1,5 @@
 -- English localization file for enUS
-local AceLocale = LibStub:GetLibrary("AceLocale-3.0")
-
-local debug = false
---[===[@debug@
-debug = true
---@end-debug@]===]
-
-local L = AceLocale:NewLocale("Hermes-UI", "enUS", true, debug)
+local L = LibStub("AceLocale-3.0"):NewLocale("Hermes-UI", "enUS", true)
 if not L then return end
 
 L["Add"] = true
@@ -112,7 +105,6 @@ L["Name"] = true
 L["New Container"] = true
 L["No description provided"] = true
 L["No views are available, you must have at least one view addon enabled."] = true
-L["Outline"] = true
 L["Player Filters"] = true
 L["Player Names"] = true
 L["Player Status"] = true
@@ -164,4 +156,3 @@ L["Bar Location"] = true
 L["Bottom"] = true
 L["Padding"] = true
 L["Top"] = true
-

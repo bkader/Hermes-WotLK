@@ -16,11 +16,6 @@ local onremove = nil
 local onclasstalentsupdated = nil
 local dbg = nil
 
--- local SPEC_CHANGE_SPELLS = {}
--- for index, id in ipairs(_G.TALENT_ACTIVATION_SPELLS) do
--- 	SPEC_CHANGE_SPELLS[GetSpellInfo(id)] = index
--- end
-
 function mod:OnInitialize()
 end
 
@@ -78,6 +73,7 @@ function mod:GetPrimarySpecializationForGuid(guid)
 	end
 end
 
-function mod:IsTalentAvailable(unit, talentID)
-	return UnitHasTalent(unit, talentID)
+function mod:IsTalentAvailable(guid, talentID)
+	local unit = guid and GetUnitIdFromGUID(guid, "group")
+	return unit and UnitHasTalent(unit, talentID)
 end

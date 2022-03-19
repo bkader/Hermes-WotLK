@@ -7,21 +7,12 @@
 <Script file="private.lua"/>
 
 <Script file="elements\table.lua" />
-<Script file="elements\string.lua" />
-<Script file="elements\math.lua" />
 <Script file="elements\group.lua" />
-<Script file="elements\pvp.lua" />
 <Script file="elements\unit.lua" />
 <Script file="elements\color.lua" />
 <Script file="elements\class.lua" />
 <Script file="elements\spec.lua" />
-<Script file="elements\pools.lua" />
-<Script file="elements\colormixin.lua" />
-<Script file="elements\statusbar.lua" />
 <Script file="elements\timer.lua" />
-<Script file="elements\delay.lua" />
-<Script file="elements\screen.lua" />
-<Script file="elements\memoize.lua" />
 
 <Script file="finalize.lua"/>
 </Ui>

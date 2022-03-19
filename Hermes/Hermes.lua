@@ -1,6 +1,5 @@
 local AddonName, Hermes = ...
-local LIB_AceAddon = LibStub("AceAddon-3.0") or error("Required library AceAddon-3.0 not found")
-_G[AddonName] = LIB_AceAddon:NewAddon(Hermes, AddonName, "AceConsole-3.0", "AceEvent-3.0", "AceComm-3.0", "AceSerializer-3.0")
+_G[AddonName] = LibStub("AceAddon-3.0"):NewAddon(Hermes, AddonName, "AceConsole-3.0", "AceEvent-3.0", "AceComm-3.0", "AceSerializer-3.0")
 
 local L = LibStub("AceLocale-3.0"):GetLocale("Hermes")
 local ACR = LibStub("AceConfigRegistry-3.0") or error("Required library AceConfigRegistry-3.0 not found")
@@ -9,7 +8,7 @@ local ADB = LibStub("AceDB-3.0") or error("Required library AceDB-3.0 not found"
 local ACD = LibStub("AceConfigDialog-3.0") or error("Required library AceConfigDialog-3.0 not found")
 local LGT = LibStub("LibGroupTalents-1.0")
 
-local HERMES_VERSION = GetAddOnMetadata(AddonName, "X-Curse-Packaged-Version") or "(dev)"
+local HERMES_VERSION = GetAddOnMetadata(AddonName, "Version") or "(dev)"
 local HERMES_VERSION_STRING = AddonName .. " " .. HERMES_VERSION
 
 local API = Hermes.Compat
@@ -28,8 +27,7 @@ Hermes:SetDefaultModuleState(false)
 local MOD_Reincarnation = nil
 local MOD_Talents = nil
 
-local dbp
-local dbg
+local dbp, dbg
 
 local core = {}
 
@@ -45,8 +43,8 @@ local INVALIDATE_TIME_THRESHOLD = 2 -- number of seconds to use in determining w
 
 local PLAYER_IS_WARLOCK = false
 
+-- note that class isn't a requirement because it's specified by the spell
 local REQUIREMENT_KEYS = {
-	--note that class isn't a requirement because it's specified by the spell
 	PLAYER_LEVEL = 10,
 	PLAYER_NAMES = 15,
 	PLAYER_RACE = 20,
@@ -100,65 +98,16 @@ local CLASS_ENUM = {
 }
 
 local SPECIALIZATION_IDS = {
-	["DEATHKNIGHT"] = {
-		[250] = "Blood",
-		[251] = "Frost",
-		[252] = "Unholy"
-	},
-	["DRUID"] = {
-		[102] = "Balance",
-		[103] = "Feral",
-		[104] = "Guardian",
-		[105] = "Restoration"
-	},
-	-- Hunter
-	["HUNTER"] = {
-		[253] = "Beast Mastery",
-		[254] = "Marksmanship",
-		[255] = "Survival"
-	},
-	-- Mage
-	["MAGE"] = {
-		[62] = "Arcane",
-		[63] = "Fire",
-		[64] = "Frost"
-	},
-	-- Paladin
-	["PALADIN"] = {
-		[65] = "Holy",
-		[66] = "Protection",
-		[67] = "Retribution"
-	},
-	-- Priest
-	["PRIEST"] = {
-		[256] = "Discipline",
-		[257] = "Holy",
-		[258] = "Shadow"
-	},
-	-- Rogue
-	["ROGUE"] = {
-		[259] = "Assassination",
-		[260] = "Combat",
-		[261] = "Subtlety"
-	},
-	-- Shaman
-	["SHAMAN"] = {
-		[262] = "Elemental",
-		[263] = "Enhancement",
-		[264] = "Restoration"
-	},
-	-- Warlock
-	["WARLOCK"] = {
-		[265] = "Affliction",
-		[266] = "Demonology",
-		[267] = "Destruction"
-	},
-	-- Warrior
-	["WARRIOR"] = {
-		[71] = "Arms",
-		[72] = "Fury",
-		[73] = "Protection"
-	}
+	["DEATHKNIGHT"] = {250, 251, 252},
+	["DRUID"] = {102, 103, 104, 105},
+	["HUNTER"] = {253, 254, 255},
+	["MAGE"] = {62, 63, 64},
+	["PALADIN"] = {65, 66, 70},
+	["PRIEST"] = {256, 257, 258},
+	["ROGUE"] = {259, 260, 261},
+	["SHAMAN"] = {262, 263, 264},
+	["WARLOCK"] = {265, 266, 267},
+	["WARRIOR"] = {71, 72, 73}
 }
 
 local MESSAGE_ENUM = {
@@ -212,179 +161,169 @@ local DEFAULT_SPELLS = {
 	{"ANY", 59752, "Alliance"}, -- Every Man for Himself
 	{"ANY", 7744, "Horde"}, -- Will of the Forsaken
 	{"ANY", 20589, "Alliance"}, -- Escape Artist
-
 	-- DEATHKNIGHT
-    {"DEATHKNIGHT", 51052, nil}, -- Anti-magic Zone
-    {"DEATHKNIGHT", 49222, nil}, -- Bone Shield
-    {"DEATHKNIGHT", 49576, nil}, -- Death Grip
-    {"DEATHKNIGHT", 48792, nil}, -- Icebound Fortitude
-    {"DEATHKNIGHT", 49039, nil}, -- Lichborne
-    {"DEATHKNIGHT", 47528, nil}, -- Mind Freeze
-    {"DEATHKNIGHT", 56222, nil}, -- Dark Command
-    {"DEATHKNIGHT", 49016, nil}, -- Hysteria
-    {"DEATHKNIGHT", 48707, nil}, -- Anti-Magic Shell
-    {"DEATHKNIGHT", 51271, nil}, -- Unbreakable Armor
-    {"DEATHKNIGHT", 49206, nil}, -- Summon Gargoyle
-    {"DEATHKNIGHT", 47568, nil}, -- ERW
-    {"DEATHKNIGHT", 55233, nil}, -- Vamp Blood
-    {"DEATHKNIGHT", 42650, nil}, -- Army of the Dead
-    {"DEATHKNIGHT", 49005, nil}, -- Mark of Blood
-    {"DEATHKNIGHT", 47476, nil}, -- Strangulate
-    {"DEATHKNIGHT", 45529, nil}, -- Blood Tap
-    {"DEATHKNIGHT", 48982, nil}, -- Rune Tap
-
+	{"DEATHKNIGHT", 51052}, -- Anti-magic Zone
+	{"DEATHKNIGHT", 49222}, -- Bone Shield
+	{"DEATHKNIGHT", 49576}, -- Death Grip
+	{"DEATHKNIGHT", 48792}, -- Icebound Fortitude
+	{"DEATHKNIGHT", 49039}, -- Lichborne
+	{"DEATHKNIGHT", 47528}, -- Mind Freeze
+	{"DEATHKNIGHT", 56222}, -- Dark Command
+	{"DEATHKNIGHT", 49016}, -- Hysteria
+	{"DEATHKNIGHT", 48707}, -- Anti-Magic Shell
+	{"DEATHKNIGHT", 51271}, -- Unbreakable Armor
+	{"DEATHKNIGHT", 49206}, -- Summon Gargoyle
+	{"DEATHKNIGHT", 47568}, -- ERW
+	{"DEATHKNIGHT", 55233}, -- Vamp Blood
+	{"DEATHKNIGHT", 42650}, -- Army of the Dead
+	{"DEATHKNIGHT", 49005}, -- Mark of Blood
+	{"DEATHKNIGHT", 47476}, -- Strangulate
+	{"DEATHKNIGHT", 45529}, -- Blood Tap
+	{"DEATHKNIGHT", 48982}, -- Rune Tap
 	-- DRUID
-    {"DRUID", 16857, nil}, -- Faerie Fire (Feral)
-    {"DRUID", 17116, nil}, -- Nature's Swiftness
-    {"DRUID", 18562, nil}, -- Swiftmend
-    {"DRUID", 22812, nil}, -- Barkskin
-    {"DRUID", 22842, nil}, -- Frenzied Regeneration
-    {"DRUID", 29166, nil}, -- Innervate
-    {"DRUID", 33357, nil}, -- Dash
-    {"DRUID", 48447, nil}, -- Tranquility
-    {"DRUID", 48477, nil}, -- Rebirth
-    {"DRUID", 50334, nil}, -- Berserk
-    {"DRUID", 5209, nil}, -- Challenging Roar
-    {"DRUID", 5229, nil}, -- Enrage
-    {"DRUID", 53201, nil}, -- Starfall
-    {"DRUID", 53227, nil}, -- Typhoon
-    {"DRUID", 61336, nil}, -- Survival Instincts
-    {"DRUID", 6795, nil}, -- Growl
-    {"DRUID", 8983, nil}, -- Bash
-    {"DRUID", 33831, nil}, -- Force of Nature
-
+	{"DRUID", 16857}, -- Faerie Fire (Feral)
+	{"DRUID", 17116}, -- Nature's Swiftness
+	{"DRUID", 18562}, -- Swiftmend
+	{"DRUID", 22812}, -- Barkskin
+	{"DRUID", 22842}, -- Frenzied Regeneration
+	{"DRUID", 29166}, -- Innervate
+	{"DRUID", 33357}, -- Dash
+	{"DRUID", 48447}, -- Tranquility
+	{"DRUID", 48477}, -- Rebirth
+	{"DRUID", 50334}, -- Berserk
+	{"DRUID", 5209}, -- Challenging Roar
+	{"DRUID", 5229}, -- Enrage
+	{"DRUID", 53201}, -- Starfall
+	{"DRUID", 53227}, -- Typhoon
+	{"DRUID", 61336}, -- Survival Instincts
+	{"DRUID", 6795}, -- Growl
+	{"DRUID", 8983}, -- Bash
+	{"DRUID", 33831}, -- Force of Nature
 	-- HUNTER
-    {"HUNTER", 60192, nil}, -- Freezing Arrow
-    {"HUNTER", 34477, nil}, -- Misdirection
-    {"HUNTER", 19574, nil}, -- Bestial Wrath
-    {"HUNTER", 19263, nil}, -- Deterrence
-    {"HUNTER", 781, nil}, -- Disengage
-    {"HUNTER", 13809, nil}, -- Frost Trap
-    {"HUNTER", 19801, nil}, -- Tranquilizing Shot
-    {"HUNTER", 3045, nil}, -- Rapid Fire
-    {"HUNTER", 23989, nil}, -- Readiness
-    {"HUNTER", 49067, nil}, -- Explosive Trap
-    {"HUNTER", 34600, nil}, -- Snake Trap
-    {"HUNTER", 60192, nil}, -- Freezing Arrow
-    {"HUNTER", 34490, nil}, -- Silencing Shot
-
+	{"HUNTER", 60192}, -- Freezing Arrow
+	{"HUNTER", 34477}, -- Misdirection
+	{"HUNTER", 19574}, -- Bestial Wrath
+	{"HUNTER", 19263}, -- Deterrence
+	{"HUNTER", 781}, -- Disengage
+	{"HUNTER", 13809}, -- Frost Trap
+	{"HUNTER", 19801}, -- Tranquilizing Shot
+	{"HUNTER", 3045}, -- Rapid Fire
+	{"HUNTER", 23989}, -- Readiness
+	{"HUNTER", 49067}, -- Explosive Trap
+	{"HUNTER", 34600}, -- Snake Trap
+	{"HUNTER", 60192}, -- Freezing Arrow
+	{"HUNTER", 34490}, -- Silencing Shot
 	-- MAGE
-    {"MAGE", 2139, nil}, -- Counterspell
-    {"MAGE", 45438, nil}, -- Ice Block
-    {"MAGE", 1953, nil}, -- Blink
-    {"MAGE", 12051, nil}, -- Evocation
-    {"MAGE", 66, nil}, -- Invisibility
-    {"MAGE", 55342, nil}, -- Mirror Image
-
+	{"MAGE", 2139}, -- Counterspell
+	{"MAGE", 45438}, -- Ice Block
+	{"MAGE", 1953}, -- Blink
+	{"MAGE", 12051}, -- Evocation
+	{"MAGE", 66}, -- Invisibility
+	{"MAGE", 55342}, -- Mirror Image
 	-- PALADIN
-    {"PALADIN", 53601, nil}, -- Sacred Shield
-    {"PALADIN", 19752, nil}, -- Divine Intervention
-    {"PALADIN", 498, nil}, -- Divine Protection
-    {"PALADIN", 64205, nil}, -- Divine Sacrifice
-    {"PALADIN", 642, nil}, -- Divine Shield
-    {"PALADIN", 10278, nil}, -- Hand of Protection
-    {"PALADIN", 48788, nil}, -- Lay on Hands
-    {"PALADIN", 1044, nil}, -- Hand of Freedom
-    {"PALADIN", 6940, nil}, -- Hand of Sacrifice
-    {"PALADIN", 1038, nil}, -- Hand of Salvation
-    {"PALADIN", 31821, nil}, -- Aura Mastery
-    {"PALADIN", 20066, nil}, -- Repentance
-    {"PALADIN", 10308, nil}, -- Hammer of Justice
-    {"PALADIN", 48817, nil}, -- Holy Wrath
-    {"PALADIN", 31884, nil}, -- Avenging Wrath
-    {"PALADIN", 54428, nil}, -- Divine Plea
-    {"PALADIN", 62124, nil}, -- Hand of Reckoning
-    {"PALADIN", 31789, nil}, -- Righteous Defense
-    {"PALADIN", 66233, nil}, -- Ardent Defender
-    {"PALADIN", 31842, nil}, -- Divine Illumination
-    {"PALADIN", 20216, nil}, -- Divine Favor
-
+	{"PALADIN", 53601}, -- Sacred Shield
+	{"PALADIN", 19752}, -- Divine Intervention
+	{"PALADIN", 498}, -- Divine Protection
+	{"PALADIN", 64205}, -- Divine Sacrifice
+	{"PALADIN", 642}, -- Divine Shield
+	{"PALADIN", 10278}, -- Hand of Protection
+	{"PALADIN", 48788}, -- Lay on Hands
+	{"PALADIN", 1044}, -- Hand of Freedom
+	{"PALADIN", 6940}, -- Hand of Sacrifice
+	{"PALADIN", 1038}, -- Hand of Salvation
+	{"PALADIN", 31821}, -- Aura Mastery
+	{"PALADIN", 20066}, -- Repentance
+	{"PALADIN", 10308}, -- Hammer of Justice
+	{"PALADIN", 48817}, -- Holy Wrath
+	{"PALADIN", 31884}, -- Avenging Wrath
+	{"PALADIN", 54428}, -- Divine Plea
+	{"PALADIN", 62124}, -- Hand of Reckoning
+	{"PALADIN", 31789}, -- Righteous Defense
+	{"PALADIN", 66233}, -- Ardent Defender
+	{"PALADIN", 31842}, -- Divine Illumination
+	{"PALADIN", 20216}, -- Divine Favor
 	-- PRIEST
-    {"PRIEST", 64044, nil}, -- Psychic Horror
-    {"PRIEST", 15487, nil}, -- Silence
-    {"PRIEST", 64843, nil}, -- Divine Hymn
-    {"PRIEST", 6346, nil}, -- Fear Ward
-    {"PRIEST", 47788, nil}, -- Guardian Spirit
-    {"PRIEST", 64901, nil}, -- Hymn of Hope
-    {"PRIEST", 33206, nil}, -- Pain Suppression
-    {"PRIEST", 47585, nil}, -- Dispersion
-    {"PRIEST", 10890, nil}, -- Psychic Scream
-    {"PRIEST", 34433, nil}, -- Shadowfiend
-    {"PRIEST", 586, nil}, -- Fade
-    {"PRIEST", 10060, nil}, -- Powers Infusion
-    {"PRIEST", 48113, nil}, -- Prayer of Mending
-    {"PRIEST", 724, nil}, -- Prayer of Mending
-
+	{"PRIEST", 64044}, -- Psychic Horror
+	{"PRIEST", 15487}, -- Silence
+	{"PRIEST", 64843}, -- Divine Hymn
+	{"PRIEST", 6346}, -- Fear Ward
+	{"PRIEST", 47788}, -- Guardian Spirit
+	{"PRIEST", 64901}, -- Hymn of Hope
+	{"PRIEST", 33206}, -- Pain Suppression
+	{"PRIEST", 47585}, -- Dispersion
+	{"PRIEST", 10890}, -- Psychic Scream
+	{"PRIEST", 34433}, -- Shadowfiend
+	{"PRIEST", 586}, -- Fade
+	{"PRIEST", 10060}, -- Powers Infusion
+	{"PRIEST", 48113}, -- Prayer of Mending
+	{"PRIEST", 724}, -- Prayer of Mending
 	-- ROGUE
-    {"ROGUE", 31224, nil}, -- Cloak of Shadows
-    {"ROGUE", 8643, nil}, -- Kidney Shot
-    {"ROGUE", 57934, nil}, -- Tricks of the Trade
-    {"ROGUE", 1766, nil}, -- Kick
-    {"ROGUE", 51690, nil}, -- Killing Spree
-    {"ROGUE", 26889, nil}, -- Vanish
-    {"ROGUE", 26669, nil}, -- Evasion
-    {"ROGUE", 13877, nil}, -- Blade Flurry
-    {"ROGUE", 13750, nil}, -- Adrenaline Rush
-    {"ROGUE", 51722, nil}, -- Dismantle
-    {"ROGUE", 11305, nil}, -- Sprint
-    {"ROGUE", 2094, nil}, -- Blind
-    {"ROGUE", 48659, nil}, -- Feint
-
+	{"ROGUE", 31224}, -- Cloak of Shadows
+	{"ROGUE", 8643}, -- Kidney Shot
+	{"ROGUE", 57934}, -- Tricks of the Trade
+	{"ROGUE", 1766}, -- Kick
+	{"ROGUE", 51690}, -- Killing Spree
+	{"ROGUE", 26889}, -- Vanish
+	{"ROGUE", 26669}, -- Evasion
+	{"ROGUE", 13877}, -- Blade Flurry
+	{"ROGUE", 13750}, -- Adrenaline Rush
+	{"ROGUE", 51722}, -- Dismantle
+	{"ROGUE", 11305}, -- Sprint
+	{"ROGUE", 2094}, -- Blind
+	{"ROGUE", 48659}, -- Feint
 	-- SHAMAN
-    {"SHAMAN", hero, nil}, -- Bloodlust/Heroism
-    {"SHAMAN", 57994, nil}, -- Wind Shear
-    {"SHAMAN", 51514, nil}, -- Hex
-    {"SHAMAN", 16190, nil}, -- Mana Tide Totem
-    {"SHAMAN", 16188, nil}, -- Nature's Swiftness
-    {"SHAMAN", 21169, nil}, -- Reincarnation
-    {"SHAMAN", 16166, nil}, -- Elemental Mastery
-    {"SHAMAN", 51533, nil}, -- Feral Spirit
-    {"SHAMAN", 59159, nil}, -- Thunderstorm
-    {"SHAMAN", 2894, nil}, -- Fire Elemental Totem
-
+	{"SHAMAN", hero}, -- Bloodlust/Heroism
+	{"SHAMAN", 57994}, -- Wind Shear
+	{"SHAMAN", 51514}, -- Hex
+	{"SHAMAN", 16190}, -- Mana Tide Totem
+	{"SHAMAN", 16188}, -- Nature's Swiftness
+	{"SHAMAN", 21169}, -- Reincarnation
+	{"SHAMAN", 16166}, -- Elemental Mastery
+	{"SHAMAN", 51533}, -- Feral Spirit
+	{"SHAMAN", 59159}, -- Thunderstorm
+	{"SHAMAN", 2894}, -- Fire Elemental Totem
 	-- WARLOCK
-    {"WARLOCK", 29858, nil}, -- Soulshatter
-    {"WARLOCK", 48020, nil}, -- Demonic Circle: Teleport
-    {"WARLOCK", 47883, nil}, -- Soulstone Resurrection
-    {"WARLOCK", 47241, nil}, -- Metamorphosis
-    {"WARLOCK", 698, nil}, -- Ritual of Summoning
-    {"WARLOCK", 29893, nil}, -- Ritual of Souls
-
-    -- WARRIOR
-    {"WARRIOR", 1161, nil}, -- Challenging Shout
-    {"WARRIOR", 12292, nil}, -- Death Wish
-    {"WARRIOR", 12323, nil}, -- Piercing Howl
-    {"WARRIOR", 12975, nil}, -- Last Stand
-    {"WARRIOR", 1680, nil}, -- Whirlwind
-    {"WARRIOR", 1719, nil}, -- Recklessness
-    {"WARRIOR", 23881, nil}, -- Bloodthirst
-    {"WARRIOR", 3411, nil}, -- Intervene
-    {"WARRIOR", 355, nil}, -- Taunt
-    {"WARRIOR", 46924, nil}, -- Bladestorm
-    {"WARRIOR", 5246, nil}, -- Intimidating Shout
-    {"WARRIOR", 60970, nil}, -- Heroic Fury
-    {"WARRIOR", 64382, nil}, -- Shattering Throw
-    {"WARRIOR", 6552, nil}, -- Pummel
-    {"WARRIOR", 676, nil}, -- Disarm
-    {"WARRIOR", 70845, nil}, -- Stoicism
-    {"WARRIOR", 72, nil}, -- Shield Bash
-    {"WARRIOR", 871, nil}, -- Shield Wall
+	{"WARLOCK", 29858}, -- Soulshatter
+	{"WARLOCK", 48020}, -- Demonic Circle: Teleport
+	{"WARLOCK", 47883}, -- Soulstone Resurrection
+	{"WARLOCK", 47241}, -- Metamorphosis
+	{"WARLOCK", 698}, -- Ritual of Summoning
+	{"WARLOCK", 29893}, -- Ritual of Souls
+	-- WARRIOR
+	{"WARRIOR", 1161}, -- Challenging Shout
+	{"WARRIOR", 12292}, -- Death Wish
+	{"WARRIOR", 12323}, -- Piercing Howl
+	{"WARRIOR", 12975}, -- Last Stand
+	{"WARRIOR", 1680}, -- Whirlwind
+	{"WARRIOR", 1719}, -- Recklessness
+	{"WARRIOR", 23881}, -- Bloodthirst
+	{"WARRIOR", 3411}, -- Intervene
+	{"WARRIOR", 355}, -- Taunt
+	{"WARRIOR", 46924}, -- Bladestorm
+	{"WARRIOR", 5246}, -- Intimidating Shout
+	{"WARRIOR", 60970}, -- Heroic Fury
+	{"WARRIOR", 64382}, -- Shattering Throw
+	{"WARRIOR", 6552}, -- Pummel
+	{"WARRIOR", 676}, -- Disarm
+	{"WARRIOR", 70845}, -- Stoicism
+	{"WARRIOR", 72}, -- Shield Bash
+	{"WARRIOR", 871} -- Shield Wall
 }
 
 local DEFAULT_ITEMS = {
-	{"ANY", 54573, nil}, -- GTS NM
-	{"ANY", 54589, nil}, -- GTS HC
-	{"ANY", 50361, nil}, -- sindy nm
-	{"ANY", 50364, nil}, -- sindy hc
-	{"ANY", 50356, nil}, -- Corroded Skeleton Key
-	{"ANY", 47088, "Alliance"}, -- Satrina Heroic
-	{"ANY", 47451, "Horde"}, -- Juggernaut Heroic
+	{"ANY", 10725}, -- Gnomish Battle Chicken
+	{"ANY", 21946}, -- Ectoplasmic Distiller
+	{"ANY", 37863}, -- Direbrew's Remote
 	{"ANY", 47080, "Alliance"}, -- Satrina Normal
+	{"ANY", 47088, "Alliance"}, -- Satrina Heroic
 	{"ANY", 47290, "Horde"}, -- Juggernaut Normal
-	{"ANY", 10725, nil}, -- Gnomish Battle Chicken
-	{"ANY", 54861, nil}, -- Nitro Boosts
-	{"ANY", 37863, nil}, -- Direbrew's Remote
-	{"ANY", 21946, nil} -- Ectoplasmic Distiller
+	{"ANY", 47451, "Horde"}, -- Juggernaut Heroic
+	{"ANY", 50356}, -- Corroded Skeleton Key
+	{"ANY", 50361}, -- sindy nm
+	{"ANY", 50364}, -- sindy hc
+	{"ANY", 54573}, -- GTS NM
+	{"ANY", 54589}, -- GTS HC
+	{"ANY", 54861}, -- Nitro Boosts
 }
 
 local EQUIPPABLE_SLOTS = {
@@ -409,12 +348,9 @@ local EQUIPPABLE_SLOTS = {
 	"WristSlot"
 }
 
-local SHARED_COOLDOWNS = {
-	--this table holds cooldowns for abilities that are shared with other abilities such as Last Stand and Rallying Cry.
-	--It's only needed for Spell Monitor users so only used with VirtualInstances
-	[12975] = 97462, --Last Stand			-->		Rallying Cry
-	[97462] = 12975 --Rallying Cry			-->		Last Stand
-}
+-- this table holds cooldowns for abilities that are shared with other abilities.
+-- It's only needed for Spell Monitor users so only used with VirtualInstances
+local SHARED_COOLDOWNS = {}
 
 local COMBAT_LOGGING_INSTRUCTIONS = L["COMBAT_LOGGING_INSTRUCTIONS"]
 
@@ -488,12 +424,7 @@ end
 --------------------------------------------------------------------
 -- API
 --------------------------------------------------------------------
-function Hermes:RegisterHermesPlugin(
-	name,
-	OnEnableCallback,
-	OnDisableCallback,
-	OnSetProfileCallback,
-	OnGetBlizzOptionsTable)
+function Hermes:RegisterHermesPlugin(name, onEnable, onDisable, onSetProfile, onGetBlizzOptionsTable)
 	--make sure that plugins table is created
 	if not name then
 		error("plugin name cannot be nil")
@@ -511,10 +442,10 @@ function Hermes:RegisterHermesPlugin(
 
 	--register the plugin
 	Plugins[name] = {
-		OnEnableCallback = OnEnableCallback,
-		OnDisableCallback = OnDisableCallback,
-		OnSetProfileCallback = OnSetProfileCallback,
-		OnGetBlizzOptionsTable = OnGetBlizzOptionsTable
+		OnEnableCallback = onEnable,
+		OnDisableCallback = onDisable,
+		OnSetProfileCallback = onSetProfile,
+		OnGetBlizzOptionsTable = onGetBlizzOptionsTable
 	}
 end
 
@@ -661,18 +592,7 @@ function Hermes:GetClassColorHEX(class)
 end
 
 function Hermes:GetSpecializationNameFromId(id)
-	if (id == nil) then
-		return "Nil"
-	end
-	for class, specializations in pairs(SPECIALIZATION_IDS) do
-		for specializationId, specializationName in pairs(specializations) do
-			if (specializationId == id) then
-				return specializationName
-			end
-		end
-	end
-
-	return "Unknown"
+	return select(2, API.GetSpecializationInfoByID(id)) or UNKNOWN
 end
 
 function Hermes:GetClassColorString(text, class)
@@ -800,18 +720,6 @@ function Hermes:PLAYER_ENTERING_WORLD() --used only for one time player initiali
 
 	PLAYER_ENTERED_WORLD = true
 
-	-- if RegisterAddonMessagePrefix(HERMES_SEND_COMM) == false then
-	-- 	--register failed for some reason
-	-- 	local message = L["|cFFFF0000Hermes Warning|r"].." ".."Failed to register addon prefix: "..HERMES_SEND_COMM
-	-- 	Hermes:Print(message)
-	-- end
-
-	-- if RegisterAddonMessagePrefix(HERMES_RECEIVE_COMM) == false then
-	-- 	--register failed for some reason
-	-- 	local message = L["|cFFFF0000Hermes Warning|r"].." ".."Failed to register addon prefix: "..HERMES_RECEIVE_COMM
-	-- 	Hermes:Print(message)
-	-- end
-
 	if (dbp.configMode == true and dbp.enabled == true) then
 		--show the warning message, but only if we're not in a part or raid
 		if GetNumGroupMembers() == 0 and GetNumSubgroupMembers() == 0 then
@@ -883,11 +791,11 @@ local function ConvertSpellIdIfSoulstone(spellID)
 	end
 end
 
-function Hermes:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, _, _, destName, _, spellID, ...)
-	core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID, destName)
+function Hermes:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, _, _, _, _, spellID)
+	core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID)
 end
 
-function core:ProcessCombatLogSpell(spellID, sourceGUID, sourceName, shared, destName)
+function core:ProcessCombatLogSpell(spellID, sourceGUID, sourceName, shared)
 	local dataExists = dbg.durations[spellID]
 
 	--this is a spell that we have an autoset value or numerical duration for
@@ -937,7 +845,7 @@ function core:ProcessCombatLogSpell(spellID, sourceGUID, sourceName, shared, des
 	end
 end
 
-function core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID, destName)
+function core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID)
 	if event ~= "SPELL_RESURRECT" and event ~= "SPELL_CAST_SUCCESS" and event ~= "SPELL_AURA_APPLIED" then
 		_lastSpell = nil
 		_lastPlayer = nil
@@ -952,10 +860,10 @@ function core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID, dest
 
 	--special case for soulstone tracking on the addon runners end.
 	if
-		PLAYER_IS_WARLOCK and
-		sourceName == Player.name and
-		((spellID == SPELLID_SOULSTONERESURRECTION and event == "SPELL_AURA_APPLIED") or (spellID == SPELLID_SOULSTONERESURRECTION_WHENDEAD and event == "SPELL_RESURRECT"))
-	then
+		PLAYER_IS_WARLOCK and sourceName == Player.name and
+			((spellID == SPELLID_SOULSTONERESURRECTION and event == "SPELL_AURA_APPLIED") or
+				(spellID == SPELLID_SOULSTONERESURRECTION_WHENDEAD and event == "SPELL_RESURRECT"))
+	 then
 		STARTTIME_SOULSTONERESURRECTION = GetTime() --remember when the spell was cast
 	end
 
@@ -970,7 +878,7 @@ function core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID, dest
 	--Note that 20707 is the spell that's cast via SPELL_AURA_APPLIED when warlock puts SS on player that is alive.
 	spellID = ConvertSpellIdIfSoulstone(spellID)
 
-	self:ProcessCombatLogSpell(spellID, sourceGUID, sourceName, nil, destName)
+	self:ProcessCombatLogSpell(spellID, sourceGUID, sourceName)
 end
 
 function Hermes:OnEnable()
@@ -1022,8 +930,12 @@ function Hermes:OnInitialize()
 	MOD_Talents:SetOnRemove(function(guid, unit, name)
 		core:TalentRemove(guid, unit, name)
 	end)
-	MOD_Talents:SetOnUpdate(function(guid, unit, info) core:TalentUpdate(guid, unit, info) end)
-	MOD_Talents:SetOnClassTalentsUpdated(function(class) core:UpdateSMSClass(class, nil) end)
+	MOD_Talents:SetOnUpdate(function(guid, unit, info)
+		core:TalentUpdate(guid, unit, info)
+	end)
+	MOD_Talents:SetOnClassTalentsUpdated(function(class)
+		core:UpdateSMSClass(class, nil)
+	end)
 end
 
 function Hermes:UpgradeDatabase()
@@ -1172,11 +1084,7 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 			--	3. Dirty receiver count is greater than zero.
 			--	4. Message needs to be sent due to cooldown change...
 			-- The point of this is to avoid sending a message to everyone when there is only one receiver interested in the spell, in which case a single message will be sent to the user
-			if
-				(core:UpdateSenderCooldown(tracker) == true or
-					((tracker.dirtyReceivers and _tableCount(tracker.receivers) == #tracker.dirtyReceivers) and
-						(tracker.dirtyReceivers and #tracker.dirtyReceivers > 1)))
-			 then
+			if (core:UpdateSenderCooldown(tracker) == true or ((tracker.dirtyReceivers and _tableCount(tracker.receivers) == #tracker.dirtyReceivers) and (tracker.dirtyReceivers and #tracker.dirtyReceivers > 1))) then
 				if (not trackerUpdates) then
 					trackerUpdates = {}
 				end
@@ -1255,12 +1163,7 @@ function Hermes:OnUpdateItemNameTimer(currentId)
 		end
 
 		--resort the items to account for new name
-		sort(
-			dbp.items,
-			function(a, b)
-				return core:SortProfileItems(a, b)
-			end
-		)
+		sort(dbp.items, function(a, b) return core:SortProfileItems(a, b) end)
 
 		--update blizz options table with the new info
 		ACR:NotifyChange(HERMES_VERSION_STRING)
@@ -1270,13 +1173,9 @@ function Hermes:OnUpdateItemNameTimer(currentId)
 	--now let's see if we need to kick off another timer
 	local nextId = core:GetNextItemIdToCache(currentId)
 	if (nextId) then
-		ITEM_NAME_TIMER =
-			C_Timer.NewTimer(
-			ITEM_NAME_THROTTLE,
-			function()
-				Hermes:OnUpdateItemNameTimer(nextId)
-			end
-		)
+		ITEM_NAME_TIMER = C_Timer.NewTimer(ITEM_NAME_THROTTLE, function()
+			Hermes:OnUpdateItemNameTimer(nextId)
+		end)
 	end
 end
 
@@ -1357,11 +1256,10 @@ function core:UpdateCommunicationsStatus()
 	local initSelfSender = false
 	--this is a special case required so that whenever we go from a party to a raid, or vice verse, that we reset sending and receiving.
 	--we can just stop it here if that's the case, and allow the code below to restart it if necessary
-	--if((wasInRaid == true and self.PlayerInRaid == false) or (wasInParty == true and self.PlayerInParty == false)) then
 	if
-		((wasInParty == true and wasInRaid == false and Player.raid == true) or --we just converted from a party to a raid
-			(wasInRaid == true and Player.raid == false and Player.party == true))
-		then --we just converted from a raid to a party
+		(wasInParty == true and wasInRaid == false and Player.raid == true) or --we just converted from a party to a raid
+		(wasInRaid == true and Player.raid == false and Player.party == true)
+	then --we just converted from a raid to a party
 		if (Hermes:IsSending() == true) then
 			core:StopSending()
 		end
@@ -1371,10 +1269,7 @@ function core:UpdateCommunicationsStatus()
 	end
 
 	--start sending if needed
-	if
-		dbp.enabled == true and
-		((dbp.sender.enabled == true and ((Player.party == true and dbp.enableparty == true) or Player.raid == true)) or dbp.configMode == true)
-	then
+	if dbp.enabled == true and ((dbp.sender.enabled == true and ((Player.party == true and dbp.enableparty == true) or Player.raid == true)) or dbp.configMode == true) then
 		if (Hermes:IsSending() == false) then
 			initSelfSender = true
 			core:StartSending()
@@ -1386,10 +1281,7 @@ function core:UpdateCommunicationsStatus()
 	end
 
 	--start receiving if needed
-	if
-		dbp.enabled == true and
-		((dbp.receiver.enabled == true and ((Player.party == true and dbp.enableparty == true) or Player.raid == true)) or dbp.configMode == true)
-	then
+	if dbp.enabled == true and ((dbp.receiver.enabled == true and ((Player.party == true and dbp.enableparty == true) or Player.raid == true)) or dbp.configMode == true) then
 		if (Hermes:IsReceiving() == false) then
 			core:StartReceiving()
 		end
@@ -1496,9 +1388,7 @@ function core:HandleRemoteSender(senderName, classEnum, resetIfExists)
 	end
 
 	if (sender) then
-		if not resetIfExists then
-			return
-		else
+		if not resetIfExists then return else
 			--causes virtual senders to be completely refreshed if it went from being virtual to non-virtual
 			core:RemoveSender(sender)
 			sender = nil
@@ -1634,11 +1524,7 @@ function core:HandleTrackerRequests(receiverName, trackerRequests)
 
 			--we're not tracking this spell yet
 			if (not tracker) then
-				tracker = {
-					id = tid,
-					duration = nil,
-					receivers = {}
-				}
+				tracker = {id = tid, receivers = {}}
 				tracker.receivers[receiverName] = {} --add the receiver to the spell
 				tinsert(Sender.Trackers, tracker) --add the spell
 
@@ -1727,10 +1613,7 @@ function core:Shutdown()
 	core:KillItemNameTimer()
 
 	--wipe out players table
-	wipe()
-	for _, player in pairs(Players) do
-		player = nil
-	end
+	wipe(Players)
 end
 
 function core:SetupNewProfileAbilities()
@@ -1763,12 +1646,7 @@ function core:SetupNewProfileSpells()
 					spell.enabled = false
 					tinsert(dbp.spells, spell)
 					--sort the spells
-					sort(
-						dbp.spells,
-						function(a, b)
-							return core:SortProfileSpells(a, b)
-						end
-					)
+					sort(dbp.spells, function(a, b) return core:SortProfileSpells(a, b) end)
 					--update spell monitor related data if available for this spell
 					self:UpdateSMSSpellCooldown(spell.id, nil)
 					self:UpdateSMSSpellMetadata(spell.id, nil)
@@ -1811,9 +1689,7 @@ function core:SetupNewProfileItems()
 					local caching = nil
 					if (not itemname) then
 						caching = 1
-						itemname =
-							"..." ..
-							L["searching"] .. " (" .. tostring(Hermes:AbilityIdToBlizzId(tonumber(itemid))) .. ")"
+						itemname = "..." .. L["searching"] .. " (" .. tostring(Hermes:AbilityIdToBlizzId(tonumber(itemid))) .. ")"
 					end
 
 					local item = {
@@ -1829,12 +1705,7 @@ function core:SetupNewProfileItems()
 					tinsert(dbp.items, item)
 
 					--sort the items
-					sort(
-						dbp.items,
-						function(a, b)
-							return core:SortProfileItems(a, b)
-						end
-					)
+					sort(dbp.items, function(a, b) return core:SortProfileItems(a, b) end)
 
 					core:FireEvent("OnInventoryItemAdded", item.id)
 
@@ -1890,8 +1761,8 @@ function core:GetAppropriateMessageChannelAndRecipient(recipientName)
 	elseif (Player.party == true) then
 		return "PARTY", recipientName
 	else
-		return nil, recipientName
 		-- error("Unable to determine message channel")
+		return nil, recipientName
 	end
 end
 
@@ -1976,16 +1847,14 @@ function core:UpdateSenderCooldown(tracker)
 	--get latest cooldown info
 	local priorCooldown = tracker.duration
 	tracker.duration = core:GetLatestCooldown(tracker.id)
-	 --
 
 	--[[
 	If the spell being tracked is determined to be one which uses runes and which also has an actual cooldown,
 	then set tracker.duration and priorCooldown to nil. This fools Hermes into thinking that the cooldown
 	has ended "naturally" and that no messages will need to be sent as updates, or in the case that it was forced above, it will
 	be sent as being available.
-	]] if
-		(Player.class == core:GetClassEnum("DEATHKNIGHT"))
-	 then
+	]]--
+	if (Player.class == core:GetClassEnum("DEATHKNIGHT")) then
 		if (core:AdjustForRunes(tracker)) then
 			tracker.duration = nil
 			priorCooldown = nil
@@ -2150,8 +2019,7 @@ function core:GetItemInfoFromPlayerCache(itemId, itemName)
 		if (name) then
 			--borrowed expressions from ItemId, thank you
 			local justItemId = string.gsub(link, ".-\124H([^\124]*)\124h.*", "%1")
-			local type, itemid, enchantId, jewelId1, jewelId2, jewelId3, jewelId4, suffixId, uniqueId =
-				strsplit(":", justItemId)
+			local type, itemid, enchantId, jewelId1, jewelId2, jewelId3, jewelId4, suffixId, uniqueId = strsplit(":", justItemId)
 			id = tonumber(itemid) --todo, extract id from link
 			icon = GetItemIcon(id)
 		end
@@ -2198,26 +2066,18 @@ end
 function core:KillCooldownScanTimer()
 	if (COOLDOWN_SCAN_TIMER) then
 		C_Timer.CancelTimer(COOLDOWN_SCAN_TIMER, true)
-		COOLDOWN_SCAN_TIMER =
-			C_Timer.NewTimer(
-			0.1,
-			function()
-				Hermes:OnUpdateSenderCooldowns()
-			end
-		)
+		COOLDOWN_SCAN_TIMER = C_Timer.NewTimer(0.1, function()
+			Hermes:OnUpdateSenderCooldowns()
+		end)
 		C_Timer.CancelTimer(COOLDOWN_SCAN_TIMER, true) --cancel again, we don't care if it ran or not
 		COOLDOWN_SCAN_TIMER = nil
 	end
 end
 
 function core:StartCooldownScanTimer(delay)
-	COOLDOWN_SCAN_TIMER =
-		C_Timer.NewTicker(
-		delay,
-		function()
-			Hermes:OnUpdateSenderCooldowns(delay)
-		end
-	)
+	COOLDOWN_SCAN_TIMER = C_Timer.NewTicker(delay, function()
+		Hermes:OnUpdateSenderCooldowns(delay)
+	end)
 end
 
 function core:GetLocalizedClassName(classToken)
@@ -2299,11 +2159,9 @@ function core:StartItemNameTimer(id)
 	--don't kick off the timer if it's already running, it's smart enough to restart itself
 	if (ITEM_NAME_TIMER == nil) then
 		--if it wasn't already running, then make the first one 10 seconds for quicker initial response of a new item
-		ITEM_NAME_TIMER =
-			C_Timer.NewTicker(5, function()
-				Hermes:OnUpdateItemNameTimer(id)
-			end
-		)
+		ITEM_NAME_TIMER = C_Timer.NewTicker(5, function()
+			Hermes:OnUpdateItemNameTimer(id)
+		end)
 	end
 end
 
@@ -2319,7 +2177,7 @@ local runeSpells = {
 	[49222] = 0, -- Bone Shield -- 1 min
 	[43265] = 0, -- Death and Decay -- 30 sec
 	[50977] = 0, -- Death Gate 1 min
-	[51271] = 0, -- Pillar of Frost -- 1 min
+	[51271] = 0, -- Unbreakable Armor -- 1 min
 	[48982] = 0, -- Rune Tap -- 30 sec
 	[47476] = 0 -- Strangulate -- 2 min
 }
@@ -2338,10 +2196,7 @@ end
 ------------------------------------------------------------------
 function core:ShowHermesTestModeMessage()
 	local message = "|cff19FF19Hermes: " .. L["Config Mode"] .. "|r\n\n"
-	message =
-		message ..
-		L["Hermes is running in Config Mode."] ..
-			"\r\n" .. L["Toggle it on or off in the 'General' settings tab."] .. "\n\n"
+	message = message .. L["Hermes is running in Config Mode."] .. "\r\n" .. L["Toggle it on or off in the 'General' settings tab."] .. "\n\n"
 	StaticPopupDialogs["HermesConfigMode"] = {
 		preferredIndex = 3,
 		text = message,
@@ -2520,26 +2375,18 @@ end
 function core:StopSenderStatusTimer()
 	if (SenderStatusTimer) then
 		C_Timer.CancelTimer(SenderStatusTimer, true)
-		SenderStatusTimer =
-			C_Timer.NewTimer(
-			0.1,
-			function()
-				Hermes:SenderStatusTimer()
-			end
-		)
+		SenderStatusTimer = C_Timer.NewTimer(0.1, function()
+			Hermes:SenderStatusTimer()
+		end)
 		C_Timer.CancelTimer(SenderStatusTimer, true) --cancel again, we don't care if it ran or not
 		SenderStatusTimer = nil
 	end
 end
 
 function core:StartSenderStatusTimer()
-	SenderStatusTimer =
-		C_Timer.NewTicker(
-		SENDER_STATUS_UPDATE_FREQUENCY,
-		function()
-			Hermes:OnSenderStatusTimer()
-		end
-	)
+	SenderStatusTimer = C_Timer.NewTicker(SENDER_STATUS_UPDATE_FREQUENCY, function()
+		Hermes:OnSenderStatusTimer()
+	end)
 end
 
 function core:UpdateSenderStatus(sender, allowEvents)
@@ -2719,7 +2566,6 @@ function core:StartTrackingAbility(dbability, nosend) --message will only be sen
 	end
 
 	--tinsert(Abilities, ability)
-
 	--call events
 	--core:FireEvent("OnAbilityAdded", ability)
 
@@ -2814,12 +2660,7 @@ function core:AddSpell(newSpellId, newSpellName, newSpellClass)
 		tinsert(dbp.spells, spell)
 
 		--sort the spells
-		sort(
-			dbp.spells,
-			function(a, b)
-				return core:SortProfileSpells(a, b)
-			end
-		)
+		sort(dbp.spells, function(a, b) return core:SortProfileSpells(a, b) end)
 
 		--update any spell monitor data if it exists but this spell hasn't been added before
 		self:UpdateSMSSpellCooldown(spell.id, nil)
@@ -2858,13 +2699,7 @@ end
 function core:AddItem(newItemId, newItemName, newItemClass)
 	local id, name, icon = core:GetItemInfo(newItemId, newItemName)
 	if (not icon) then
-		local message =
-			L["|cFFFF0000Hermes Warning|r"] ..
-			" " ..
-				L[
-					"Item name or id not found. If you're confident the id or name is correct, try having someone link the item or putting the item in your inventory and adding again."
-				]
-		print(message)
+		print(L["|cFFFF0000Hermes Warning|r"] .. " " .. L["Item name or id not found. If you're confident the id or name is correct, try having someone link the item or putting the item in your inventory and adding again."])
 		return nil
 	end
 
@@ -2873,8 +2708,7 @@ function core:AddItem(newItemId, newItemName, newItemClass)
 		--make sure we're not already tracking this item
 		for i, item in ipairs(dbp.items) do
 			if (item.id == tonumber(id)) then
-				local message = L["|cFFFF0000Hermes Warning|r"] .. " " .. L["Item has already been added"]
-				print(message)
+				print(L["|cFFFF0000Hermes Warning|r"] .. " " .. L["Item has already been added"])
 				return nil
 			end
 		end
@@ -2899,12 +2733,7 @@ function core:AddItem(newItemId, newItemName, newItemClass)
 		tinsert(dbp.items, item)
 
 		--sort the spells
-		sort(
-			dbp.items,
-			function(a, b)
-				return core:SortProfileItems(a, b)
-			end
-		)
+		sort(dbp.items, function(a, b) return core:SortProfileItems(a, b) end)
 
 		core:FireEvent("OnInventoryItemAdded", item.id)
 
@@ -3505,17 +3334,8 @@ end
 ------------------------------------------------------------------
 local optionTables = nil
 
-local newSpellTemplate = {
-	class = L["-- Select --"],
-	id = nil,
-	name = nil
-}
-
-local newItemTemplate = {
-	class = L["-- Select --"],
-	id = nil,
-	name = nil
-}
+local newSpellTemplate = {class = L["-- Select --"]}
+local newItemTemplate = {class = L["-- Select --"]}
 
 function core:OpenConfigWindow()
 	ACD:Open(HERMES_VERSION_STRING)
@@ -3565,7 +3385,7 @@ function core:LoadDefaultOptions()
 		}
 	}
 
-	Hermes.db = ADB:New("HermesDB2", defaults)
+	Hermes.db = ADB:New("HermesDB", defaults)
 end
 
 --remember which spell we're configuring and what mode
@@ -3635,24 +3455,13 @@ local function refreshTalentLookups(class)
 				_talentNameValues[i] = {index = i, name = name}
 			end
 
-			for i, v in pairs(SPECIALIZATION_IDS[class]) do
-				_specializations[i] = v
+			for _, v in pairs(SPECIALIZATION_IDS[class]) do
+				_specializations[v] = select(2, API.GetSpecializationInfoByID(v))
 			end
 		end
 		--sort the values and keys by name
-		sort(
-			_talentNameValues,
-			function(a, b)
-				return a.name < b.name
-			end
-		)
-
-		sort(
-			_talentNameKeys,
-			function(a, b)
-				return a < b
-			end
-		)
+		sort(_talentNameValues, function(a, b) return a.name < b.name end)
+		sort(_talentNameKeys, function(a, b) return a < b end)
 	end
 end
 
@@ -3809,9 +3618,7 @@ function core:BlizOptionsTable_SpellMetadata()
 				type = "description",
 				width = "full",
 				order = 5,
-				name = L[
-					"Each row represents a key/value pair. Provide a key in the last row to create a new entry. Delete an existing entry by clearing the key. The data provided here can be used by other addons leveraging Hermes API."
-				],
+				name = L["Each row represents a key/value pair. Provide a key in the last row to create a new entry. Delete an existing entry by clearing the key. The data provided here can be used by other addons leveraging Hermes API."],
 				fontSize = "medium"
 			}
 		}
@@ -4113,16 +3920,12 @@ function core:BlizOptionsTable_SpellRequirements()
 			},
 			spacer1C = {
 				type = "description",
-				name = "|TInterface\\BUTTONS\\UI-GuildButton-PublicNote-Up:0:0:0:0|t " ..
-					L[
-						"|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."
-					],
+				name = "|TInterface\\BUTTONS\\UI-GuildButton-PublicNote-Up:0:0:0:0|t " .. L["|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."],
 				width = "double",
 				order = 18,
 				fontSize = "medium",
 				hidden = function(info)
-					return not (tablelength(_specializations) == 0 and
-						REQUIREMENT_KEYS[newRequirementTemplate.type] == REQUIREMENT_KEYS.TALENT_SPEC)
+					return not (tablelength(_specializations) == 0 and REQUIREMENT_KEYS[newRequirementTemplate.type] == REQUIREMENT_KEYS.TALENT_SPEC)
 				end
 			},
 			---------------------
@@ -4149,10 +3952,7 @@ function core:BlizOptionsTable_SpellRequirements()
 			},
 			spacer2A = {
 				type = "description",
-				name = "|TInterface\\BUTTONS\\UI-GuildButton-PublicNote-Up:0:0:0:0|t " ..
-					L[
-						"|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."
-					],
+				name = "|TInterface\\BUTTONS\\UI-GuildButton-PublicNote-Up:0:0:0:0|t " .. L["|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."],
 				width = "double",
 				order = 18,
 				fontSize = "medium",
@@ -4183,10 +3983,7 @@ function core:BlizOptionsTable_SpellRequirements()
 				func = function()
 					--create the requirement
 					local key = REQUIREMENT_KEYS[newRequirementTemplate.type]
-
-					local requirement = {
-						k = key
-					}
+					local requirement = {k = key}
 
 					if key == REQUIREMENT_KEYS.PLAYER_RACE then
 						requirement.race = newRequirementTemplate.race
@@ -4247,11 +4044,7 @@ function core:BlizOptionsTable_SpellRequirements()
 				elseif key == REQUIREMENT_KEYS.PLAYER_NAMES then
 					requirementName = format(L["Player name in |cFF00FF00%s|r"], tostring(requirement.names))
 				elseif key == REQUIREMENT_KEYS.TALENT_SPEC then
-					requirementName =
-						format(
-						L["Player specialization is |cFF00FF00%s|r"],
-						Hermes:GetSpecializationNameFromId(requirement.specializationId)
-					)
+					requirementName = format(L["Player specialization is |cFF00FF00%s|r"], Hermes:GetSpecializationNameFromId(requirement.specializationId))
 				elseif key == REQUIREMENT_KEYS.TALENT_NAME then
 					local talentName
 					for k, v in pairs(_talentNameValues) do
@@ -4487,15 +4280,11 @@ function core:BlizOptionsTable_SpellAdjustments()
 			},
 			spacer1B = {
 				type = "description",
-				name = "|TInterface\\BUTTONS\\UI-GuildButton-PublicNote-Up:0:0:0:0|t " ..
-					L[
-						"|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."
-					],
+				name = "|TInterface\\BUTTONS\\UI-GuildButton-PublicNote-Up:0:0:0:0|t " .. L["|cFFFF3333Missing Talents:|r Hermes has yet to inspect a player of this class for talent information. Try again later when this class is in your group."],
 				width = "double",
 				order = 18,
 				fontSize = "medium",
-				hidden = not (tablelength(_specializations) == 0 and
-					ADJUSTMENT_KEYS[newAdjustmentTemplate.type] == ADJUSTMENT_KEYS.TALENT_SPEC)
+				hidden = not (tablelength(_specializations) == 0 and ADJUSTMENT_KEYS[newAdjustmentTemplate.type] == ADJUSTMENT_KEYS.TALENT_SPEC)
 			},
 			---------------------
 			-- TALENT NAME
@@ -4576,11 +4365,7 @@ function core:BlizOptionsTable_SpellAdjustments()
 				func = function()
 					--create the requirement
 					local key = ADJUSTMENT_KEYS[newAdjustmentTemplate.type]
-
-					local adjustment = {
-						k = key,
-						offset = newAdjustmentTemplate.offset
-					}
+					local adjustment = {k = key, offset = newAdjustmentTemplate.offset}
 
 					if key == ADJUSTMENT_KEYS.PLAYER_NAME then
 						adjustment.name = newAdjustmentTemplate.playerName
@@ -4634,31 +4419,26 @@ function core:BlizOptionsTable_SpellAdjustments()
 				local key = adjustment.k
 
 				if key == ADJUSTMENT_KEYS.PLAYER_NAME then
-					adjustmentName =
-						format(
+					adjustmentName = format(
 						L["Offset cooldown by |cFF00FF00%s|r if player name is |cFF00FF00%s|r"],
 						tostring(adjustment.o),
 						tostring(adjustment.name)
 					)
 				elseif key == ADJUSTMENT_KEYS.PLAYER_LEVEL then
-					adjustmentName =
-						format(
+					adjustmentName = format(
 						L["Offset cooldown by |cFF00FF00%s|r if player level is at least |cFF00FF00%s|r"],
 						tostring(adjustment.o),
 						tostring(adjustment.level)
 					)
 				elseif key == ADJUSTMENT_KEYS.TALENT_SPEC then
-					adjustmentName =
-						format(
+					adjustmentName = format(
 						L["Offset cooldown by |cFF00FF00%s|r if player specced |cFF00FF00%s|r"],
 						tostring(adjustment.offset),
 						Hermes:GetSpecializationNameFromId(adjustment.specialization)
 					)
 				elseif key == ADJUSTMENT_KEYS.TALENT_NAME then
-					adjustmentName =
-						format(
-						L["Offset cooldown by |cFF00FF00%s|r if player has |cFF00FF00%s|r or more points in |cFF00FF00"] ..
-							tostring(adjustment.talname) .. "|r",
+					adjustmentName = format(
+						L["Offset cooldown by |cFF00FF00%s|r if player has |cFF00FF00%s|r or more points in |cFF00FF00"] .. tostring(adjustment.talname) .. "|r",
 						tostring(adjustment.o),
 						tostring(adjustment.talrank)
 					)
@@ -5139,12 +4919,7 @@ function core:BlizOptionsTable_Maintenance()
 							spell.enabled = false
 							tinsert(dbp.spells, spell)
 							--sort the spells
-							sort(
-								dbp.spells,
-								function(a, b)
-									return core:SortProfileSpells(a, b)
-								end
-							)
+							sort(dbp.spells, function(a, b) return core:SortProfileSpells(a, b) end)
 							--update spell monitor related data if available for this spell
 							self:UpdateSMSSpellCooldown(spell.id, nil)
 							self:UpdateSMSSpellMetadata(spell.id, nil)
@@ -5201,12 +4976,7 @@ function core:BlizOptionsTable_Maintenance()
 	if _expandTalentStatus == false then
 		optionTables.args.Maintenance.args["SpellMonitor"] = {
 			type = "group",
-			name = L["Spell Monitor"] ..
-				" ( |cFF00FF00" ..
-					L["latest version"] ..
-						" " ..
-							tostring(Hermes.SPELL_MONITOR_SCHEMA.schema) ..
-								"-" .. tostring(Hermes.SPELL_MONITOR_SCHEMA.revision) .. "|r )",
+			name = L["Spell Monitor"] .. " ( |cFF00FF00" .. L["latest version"] .. " " .. tostring(Hermes.SPELL_MONITOR_SCHEMA.schema) .. "-" .. tostring(Hermes.SPELL_MONITOR_SCHEMA.revision) .. "|r )",
 			order = 10,
 			inline = true,
 			args = {
@@ -5240,12 +5010,7 @@ function core:BlizOptionsTable_Maintenance()
 	else
 		optionTables.args.Maintenance.args["SpellMonitor"] = {
 			type = "group",
-			name = L["Spell Monitor"] ..
-				" ( |cFF00FF00" ..
-					L["latest version"] ..
-						" " ..
-							tostring(Hermes.SPELL_MONITOR_SCHEMA.schema) ..
-								"-" .. tostring(Hermes.SPELL_MONITOR_SCHEMA.revision) .. "|r )",
+			name = L["Spell Monitor"] .. " ( |cFF00FF00" .. L["latest version"] .. " " .. tostring(Hermes.SPELL_MONITOR_SCHEMA.schema) .. "-" .. tostring(Hermes.SPELL_MONITOR_SCHEMA.revision) .. "|r )",
 			order = 10,
 			inline = true,
 			args = {
@@ -5354,15 +5119,12 @@ function core:BlizOptionsTable_Maintenance()
 				else
 					if talents.schema == Hermes.SPELL_MONITOR_SCHEMA.schema then
 						if talents.revision == Hermes.SPELL_MONITOR_SCHEMA.revision then
-							schemaname =
-								"|cFF00FF00" .. tostring(talents.schema) .. "-" .. tostring(talents.revision) .. "|r"
+							schemaname = "|cFF00FF00" .. tostring(talents.schema) .. "-" .. tostring(talents.revision) .. "|r"
 						else
-							schemaname =
-								"|cFFFFA000" .. tostring(talents.schema) .. "-" .. tostring(talents.revision) .. "|r"
+							schemaname = "|cFFFFA000" .. tostring(talents.schema) .. "-" .. tostring(talents.revision) .. "|r"
 						end
 					else
-						schemaname =
-							"|cFFFF0000" .. tostring(talents.schema) .. "-" .. tostring(talents.revision) .. "|r"
+						schemaname = "|cFFFF0000" .. tostring(talents.schema) .. "-" .. tostring(talents.revision) .. "|r"
 					end
 				end
 			else
@@ -5387,9 +5149,7 @@ function core:BlizOptionsTable_Maintenance()
 						name = schemaname,
 						width = "normal",
 						order = 10,
-						desc = L[
-							"Click to replace talent related cooldowns, requirements and adjustments with the latest version."
-						],
+						desc = L["Click to replace talent related cooldowns, requirements and adjustments with the latest version."],
 						disabled = disabled,
 						func = function()
 							self:UpdateSMSClass(key, 1) --force it
@@ -5411,13 +5171,6 @@ function core:BlizOptionsTable_Spells()
 		wipe(optionTables.args.Spells.args)
 		optionTables.args.Spells.args = {}
 	end
-
-	--if Spell Scanning got disabled, then reset mode back to list since no details pages are supported
-	--if not dbp.combatLogging or dbp.combatLogging and dbp.combatLogging == false then
-	--	CONFIGURE_SETTINGS.mode = "list"
-	--	CONFIGURE_SETTINGS.spell = nil
-	--	CONFIGURE_SETTINGS.spellid = nil
-	--end
 
 	if CONFIGURE_SETTINGS.mode == "spellmonitor" then
 		core:BlizOptionsTable_SpellDetail()
@@ -5454,11 +5207,10 @@ function core:BlizOptionsTable_SpellList()
 		local groupHasSpells = false
 		for i, spell in ipairs(dbp.spells) do
 			local BASECOOLDOWN = dbg.durations[spell.id]
-			local configureButtonName = L["Spell Monitor"] .. " |T" .. "" .. ":-0:-0:-0:-0|t" --forces a gap the same size as any other icon
-			if BASECOOLDOWN ~= nil then
-				configureButtonName =
-					L["Spell Monitor"] .. " |T" .. "Interface\\RAIDFRAME\\ReadyCheck-Ready" .. ":0:0:0:0|t"
-			end
+			-- local configureButtonName = L["Spell Monitor"] .. " |T" .. "" .. ":-0:-0:-0:-0|t" --forces a gap the same size as any other icon
+			-- if BASECOOLDOWN ~= nil then
+			-- 	configureButtonName = L["Spell Monitor"] .. " |T" .. "Interface\\RAIDFRAME\\ReadyCheck-Ready" .. ":0:0:0:0|t"
+			-- end
 
 			if (spell.class == className) then
 				groupHasSpells = true
@@ -5535,8 +5287,7 @@ function core:BlizOptionsTable_SpellList()
 					local values = {}
 					values[L["-- Select --"]] = L["-- Select --"]
 					for i, classFileName in ipairs(CLASS_ENUM) do
-						values[classFileName] =
-							Hermes:GetClassColorString(core:GetLocalizedClassName(classFileName), classFileName)
+						values[classFileName] = Hermes:GetClassColorString(core:GetLocalizedClassName(classFileName), classFileName)
 					end
 					return values
 				end,
@@ -5595,8 +5346,7 @@ function core:BlizOptionsTable_SpellList()
 				end,
 				disabled = function()
 					--ensure that a class is selected and that spell evaluates to a spell id or name
-					return newSpellTemplate.class == L["-- Select --"] or
-						(not newSpellTemplate.name and not newSpellTemplate.id)
+					return newSpellTemplate.class == L["-- Select --"] or (not newSpellTemplate.name and not newSpellTemplate.id)
 				end
 			}
 		}
@@ -5726,9 +5476,7 @@ function core:BlizOptionsTable_SpellDetail()
 		args = {
 			noBaseCooldown = {
 				type = "description",
-				name = L[
-					"|cFFFF2200Base Cooldown Required:|r A Base Cooldown is required to enable Spell Monitor support."
-				],
+				name = L["|cFFFF2200Base Cooldown Required:|r A Base Cooldown is required to enable Spell Monitor support."],
 				width = "full",
 				order = 10,
 				fontSize = "medium",
@@ -5841,8 +5589,7 @@ function core:BlizOptionsTable_Items()
 					local values = {}
 					values[L["-- Select --"]] = L["-- Select --"]
 					for i, classFileName in ipairs(CLASS_ENUM) do
-						values[classFileName] =
-							Hermes:GetClassColorString(core:GetLocalizedClassName(classFileName), classFileName)
+						values[classFileName] = Hermes:GetClassColorString(core:GetLocalizedClassName(classFileName), classFileName)
 					end
 					return values
 				end,
@@ -6019,36 +5766,36 @@ function core:TalentUpdate(guid, unit, info)
 
 		--don't add yourself to Players or try to do any processing on it
 		-- if not UnitIsUnit(unit, "player") then -- FIXME
-			--process the player changes
-			local player = core:ProcessPlayer(guid, info)
-			--rebuild the spell duration table for the player
-			core:BuildPlayerSpellCache(player, guid)
-			--clear any cooldowns that are no longer reliable
-			core:ResyncCooldowns(player)
-			--if we're receiving, then we may need to reset this sender
-			local sender = core:FindSenderByName(player.name)
-			if Hermes:IsReceiving() and sender and sender.virtual then
-				--the sender exists if this is true
-				core:RemoveSender(sender)
-			end
+		--process the player changes
+		local player = core:ProcessPlayer(guid, info)
+		--rebuild the spell duration table for the player
+		core:BuildPlayerSpellCache(player, guid)
+		--clear any cooldowns that are no longer reliable
+		core:ResyncCooldowns(player)
+		--if we're receiving, then we may need to reset this sender
+		local sender = core:FindSenderByName(player.name)
+		if Hermes:IsReceiving() and sender and sender.virtual then
+			--the sender exists if this is true
+			core:RemoveSender(sender)
+		end
 
-			if Hermes:IsReceiving() then
-				local sender = core:FindSenderByName(player.name)
-				if not sender then
-					local classEnum = core:GetClassEnum(player.class)
-					core:AddSender(player.name, classEnum, 1, info)
-					--now go ahead and fire off a virtual instance for each spell
-					for id, duration in pairs(player.spellcache) do
-						local ability = core:FindTrackedAbilityById(id)
-						local canCreateVirtualInstance = core:CanCreateVirtualInstance(ability)
-						if canCreateVirtualInstance then
-							local remaining = core:GetPlayerCooldown(player, id)
-							core:AddVirtualInstance(player.name, player.class, id, remaining)
-						end
+		if Hermes:IsReceiving() then
+			local sender = core:FindSenderByName(player.name)
+			if not sender then
+				local classEnum = core:GetClassEnum(player.class)
+				core:AddSender(player.name, classEnum, 1, info)
+				--now go ahead and fire off a virtual instance for each spell
+				for id, duration in pairs(player.spellcache) do
+					local ability = core:FindTrackedAbilityById(id)
+					local canCreateVirtualInstance = core:CanCreateVirtualInstance(ability)
+					if canCreateVirtualInstance then
+						local remaining = core:GetPlayerCooldown(player, id)
+						core:AddVirtualInstance(player.name, player.class, id, remaining)
 					end
 				end
 			end
-		-- end
+		end
+	-- end
 	end
 end
 
@@ -6117,10 +5864,7 @@ function core:UpdateSMSSpellRequirements(id, class, replace)
 
 		local exists = nil
 		for _, r in ipairs(requirements) do
-			if
-				r.k == REQUIREMENT_KEYS.PLAYER_LEVEL or r.k == REQUIREMENT_KEYS.TALENT_NAME or
-					r.k == REQUIREMENT_KEYS.TALENT_SPEC
-			 then
+			if r.k == REQUIREMENT_KEYS.PLAYER_LEVEL or r.k == REQUIREMENT_KEYS.TALENT_NAME or r.k == REQUIREMENT_KEYS.TALENT_SPEC then
 				exists = 1
 				break
 			end
@@ -6133,10 +5877,7 @@ function core:UpdateSMSSpellRequirements(id, class, replace)
 				local i = 1
 				while i <= #requirements do
 					local key = requirements[i].k
-					if
-						key == REQUIREMENT_KEYS.PLAYER_LEVEL or key == REQUIREMENT_KEYS.TALENT_NAME or
-							key == REQUIREMENT_KEYS.TALENT_SPEC
-					 then
+					if key == REQUIREMENT_KEYS.PLAYER_LEVEL or key == REQUIREMENT_KEYS.TALENT_NAME or key == REQUIREMENT_KEYS.TALENT_SPEC then
 						tremove(requirements, i)
 					else
 						i = i + 1
@@ -6185,10 +5926,7 @@ function core:UpdateSMSSpellAdjustments(id, class, replace)
 		--look for adjustments set to PLAYER_LEVEL, TALENT_NAME, or TALENT_SPEC
 		local exists
 		for _, a in ipairs(adjustments) do
-			if
-				a.k == ADJUSTMENT_KEYS.PLAYER_LEVEL or a.k == ADJUSTMENT_KEYS.TALENT_NAME or
-					a.k == ADJUSTMENT_KEYS.TALENT_SPEC
-			 then
+			if a.k == ADJUSTMENT_KEYS.PLAYER_LEVEL or a.k == ADJUSTMENT_KEYS.TALENT_NAME or a.k == ADJUSTMENT_KEYS.TALENT_SPEC then
 				exists = 1
 				break
 			end
@@ -6201,10 +5939,7 @@ function core:UpdateSMSSpellAdjustments(id, class, replace)
 				local i = 1
 				while i <= #adjustments do
 					local key = adjustments[i].k
-					if
-						key == ADJUSTMENT_KEYS.PLAYER_LEVEL or key == ADJUSTMENT_KEYS.TALENT_NAME or
-							key == ADJUSTMENT_KEYS.TALENT_SPEC
-					 then
+					if key == ADJUSTMENT_KEYS.PLAYER_LEVEL or key == ADJUSTMENT_KEYS.TALENT_NAME or key == ADJUSTMENT_KEYS.TALENT_SPEC then
 						tremove(adjustments, i)
 					else
 						i = i + 1
@@ -6222,10 +5957,7 @@ function core:UpdateSMSSpellAdjustments(id, class, replace)
 					if talents then --will be nil for "ALL" class
 						local talname = talents.name[schemaadj.talname] --find the name of the talent by index
 						if talname then
-							tinsert(
-								adjustments,
-								{k = k, talname = talname, talrank = schemaadj.talrank, o = schemaadj.o}
-							)
+							tinsert(adjustments, {k = k, talname = talname, talrank = schemaadj.talrank, o = schemaadj.o})
 						end
 					end
 				elseif k == ADJUSTMENT_KEYS.TALENT_SPEC then
