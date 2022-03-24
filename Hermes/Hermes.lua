@@ -16,6 +16,7 @@ local C_Timer = API.C_Timer
 local GetNumGroupMembers = API.GetNumGroupMembers
 local GetNumSubgroupMembers = API.GetNumSubgroupMembers
 local IsInRaid = API.IsInRaid
+local _
 
 Hermes.HERMES_VERSION_STRING = HERMES_VERSION_STRING
 Hermes.Name = UnitName("player")
@@ -791,17 +792,17 @@ local function ConvertSpellIdIfSoulstone(spellID)
 	end
 end
 
-function Hermes:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, _, _, _, _, spellID)
-	core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID)
+function Hermes:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, srcGUID, srcName, _, _, _, _, spellID)
+	core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID)
 end
 
-function core:ProcessCombatLogSpell(spellID, sourceGUID, sourceName, shared)
+function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared)
 	local dataExists = dbg.durations[spellID]
 
 	--this is a spell that we have an autoset value or numerical duration for
 	if dataExists and dataExists ~= false then
 		--find the player
-		local player = Players[sourceGUID]
+		local player = Players[srcGUID]
 
 		if player then
 			--see if this player qualifies for this spell, and get the duration
@@ -810,19 +811,19 @@ function core:ProcessCombatLogSpell(spellID, sourceGUID, sourceName, shared)
 				--update the cooldowns table for the player and ability
 				core:SetPlayerCooldown(player, spellID, duration)
 
-				local sender = core:FindSenderByName(sourceName)
+				local sender = core:FindSenderByName(srcName)
 				local ability = core:FindTrackedAbilityById(spellID)
 
 				if sender and sender.virtual and core:CanCreateVirtualInstance(ability) then
 					--prevent from adding the same spell for the same player more than once
-					if _lastSpell ~= spellID or _lastPlayer ~= sourceName then
+					if _lastSpell ~= spellID or _lastPlayer ~= srcName then
 						core:AddVirtualInstance(player.name, player.class, spellID, duration)
 					end
 
 					--store the last spell and player captured
 					if not shared then
 						_lastSpell = spellID
-						_lastPlayer = sourceName
+						_lastPlayer = srcName
 					end
 				end
 			else
@@ -840,19 +841,19 @@ function core:ProcessCombatLogSpell(spellID, sourceGUID, sourceName, shared)
 		--look for any shared cooldowns and add that if necessary too
 		local sharedId = SHARED_COOLDOWNS[spellID]
 		if sharedId then
-			core:ProcessCombatLogSpell(sharedId, sourceGUID, sourceName, true)
+			core:ProcessCombatLogSpell(sharedId, srcGUID, srcName, true)
 		end
 	end
 end
 
-function core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID)
+function core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID)
 	if event ~= "SPELL_RESURRECT" and event ~= "SPELL_CAST_SUCCESS" and event ~= "SPELL_AURA_APPLIED" then
 		_lastSpell = nil
 		_lastPlayer = nil
 		return
 	end
 	--ignore weird stuff that we don't know can happen or not
-	if not sourceName or not spellID or not sourceGUID then
+	if not srcName or not spellID or not srcGUID then
 		_lastSpell = nil
 		_lastPlayer = nil
 		return
@@ -860,15 +861,18 @@ function core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID)
 
 	--special case for soulstone tracking on the addon runners end.
 	if
-		PLAYER_IS_WARLOCK and sourceName == Player.name and
-			((spellID == SPELLID_SOULSTONERESURRECTION and event == "SPELL_AURA_APPLIED") or
-				(spellID == SPELLID_SOULSTONERESURRECTION_WHENDEAD and event == "SPELL_RESURRECT"))
-	 then
+		PLAYER_IS_WARLOCK and
+		srcName == Player.name and
+		(
+			(spellID == SPELLID_SOULSTONERESURRECTION and event == "SPELL_AURA_APPLIED") or
+			(spellID == SPELLID_SOULSTONERESURRECTION_WHENDEAD and event == "SPELL_RESURRECT")
+		)
+	then
 		STARTTIME_SOULSTONERESURRECTION = GetTime() --remember when the spell was cast
 	end
 
 	--don't process yourself
-	-- if (sourceName == Player.name) then
+	-- if (srcName == Player.name) then
 	-- 	_lastSpell = nil
 	-- 	_lastPlayer = nil
 	-- 	return
@@ -878,7 +882,7 @@ function core:ProcessCombatLogEvent(event, sourceGUID, sourceName, spellID)
 	--Note that 20707 is the spell that's cast via SPELL_AURA_APPLIED when warlock puts SS on player that is alive.
 	spellID = ConvertSpellIdIfSoulstone(spellID)
 
-	self:ProcessCombatLogSpell(spellID, sourceGUID, sourceName)
+	self:ProcessCombatLogSpell(spellID, srcGUID, srcName)
 end
 
 function Hermes:OnEnable()
@@ -1033,12 +1037,12 @@ function Hermes:OnReceiverComm(prefix, serialized, channel, sender)
 			local msgName = MESSAGE_ENUM[msgEnum]
 
 			if (msgName and msgName == "INITIALIZE_SENDER") then
-				local classEnum = msgContent
-				core:ProcessMessage_INITIALIZE_SENDER(sender, classEnum, channel)
+				local class = msgContent
+				core:ProcessMessage_INITIALIZE_SENDER(sender, class, channel)
 			elseif (msgName and msgName == "UPDATE_SPELLS") then
-				local classEnum = msgContent[1]
+				local class = msgContent[1]
 				local trackerUpdates = msgContent[2]
-				core:ProcessMessage_UPDATE_SPELLS(sender, classEnum, trackerUpdates, channel)
+				core:ProcessMessage_UPDATE_SPELLS(sender, class, trackerUpdates, channel)
 			end
 		else
 			error("Error deserializing message")
@@ -1376,7 +1380,7 @@ function core:RequestAbilityUpdate(id)
 	core:SendMessage_REQUEST_SPELLS(nil, trackerRequests)
 end
 
-function core:HandleRemoteSender(senderName, classEnum, resetIfExists)
+function core:HandleRemoteSender(senderName, class, resetIfExists)
 	--see if we know the sender
 	local sender = core:FindSenderByName(senderName)
 
@@ -1397,14 +1401,14 @@ function core:HandleRemoteSender(senderName, classEnum, resetIfExists)
 
 	if (not sender) then
 		info = {}
-		core:AddSender(senderName, classEnum, nil, info)
+		core:AddSender(senderName, class, nil, info)
 	end
 
 	--build up spellRequests
 	local requests = {}
 	for _, ability in ipairs(Abilities) do
 		--only add spells that apply to the class
-		if (core:GetClassEnum(ability.class) == classEnum or ability.class == "ANY") then
+		if (ability.class == class or ability.class == "ANY") then
 			tinsert(requests, ability.id)
 		end
 	end
@@ -1415,19 +1419,17 @@ function core:HandleRemoteSender(senderName, classEnum, resetIfExists)
 	end
 end
 
-function core:ProcessMessage_INITIALIZE_SENDER(senderName, classEnum, channel)
+function core:ProcessMessage_INITIALIZE_SENDER(senderName, class, channel)
 	if senderName and senderName ~= Player.name then
-		core:HandleRemoteSender(senderName, classEnum, channel ~= "WHISPER")
+		core:HandleRemoteSender(senderName, class, channel ~= "WHISPER")
 	end
 end
 
-function core:HandleTrackerUpdates(senderName, classEnum, trackerUpdates)
-	-- core:HandleRemoteSender(senderName, classEnum, false) --adds the sender if it wasn't already known
-
+function core:HandleTrackerUpdates(senderName, class, trackerUpdates)
 	for _, trackerUpdate in ipairs(trackerUpdates) do
 		local ability = nil
 		for _, a in ipairs(Abilities) do
-			if (a.id == trackerUpdate[1] and (core:GetClassEnum(a.class) == classEnum or a.class == "ANY")) then
+			if (a.id == trackerUpdate[1] and (a.class == class or a.class == "ANY")) then
 				ability = a --we're tracking it
 				break
 			end
@@ -1459,8 +1461,8 @@ function core:HandleTrackerUpdates(senderName, classEnum, trackerUpdates)
 	end
 end
 
-function core:ProcessMessage_UPDATE_SPELLS(senderName, classEnum, trackerUpdates, channel)
-	core:HandleTrackerUpdates(senderName, classEnum, trackerUpdates)
+function core:ProcessMessage_UPDATE_SPELLS(senderName, class, trackerUpdates, channel)
+	core:HandleTrackerUpdates(senderName, class, trackerUpdates)
 end
 
 function core:StartSending()
@@ -1808,7 +1810,7 @@ end
 
 function core:IsSpellKnown(spellid)
 	-- Special catch for warlock soulstone tracking. Soulstone Resurrection doesn't show up in the spell book
-	if (spellid == SPELLID_SOULSTONERESURRECTION and Player.class == core:GetClassEnum("WARLOCK")) then
+	if (spellid == SPELLID_SOULSTONERESURRECTION and Player.class == "WARLOCK") then
 		return true
 	end
 
@@ -1854,7 +1856,7 @@ function core:UpdateSenderCooldown(tracker)
 	has ended "naturally" and that no messages will need to be sent as updates, or in the case that it was forced above, it will
 	be sent as being available.
 	]]--
-	if (Player.class == core:GetClassEnum("DEATHKNIGHT")) then
+	if (Player.class == "DEATHKNIGHT") then
 		if (core:AdjustForRunes(tracker)) then
 			tracker.duration = nil
 			priorCooldown = nil
@@ -1862,7 +1864,7 @@ function core:UpdateSenderCooldown(tracker)
 	end
 
 	--special handling for warlock soulstones
-	if (Player.class == core:GetClassEnum("WARLOCK")) then
+	if (Player.class == "WARLOCK") then
 		--see if this is the soulstone tracker
 		if tracker.id == SPELLID_SOULSTONERESURRECTION then
 			--try to find a soulstone in their inventory
@@ -2045,15 +2047,6 @@ function core:GetItemInfo(requestid, requestname)
 	return id, name, icon
 end
 
-function core:GetClassEnum(classFileName)
-	for i, class in ipairs(CLASS_ENUM) do
-		if (class:upper() == classFileName:upper()) then
-			return i
-		end
-	end
-	error("Failed to locate class enum")
-end
-
 function core:GetMessageEnum(messageName)
 	for i, msg in ipairs(MESSAGE_ENUM) do
 		if (msg == messageName) then
@@ -2080,13 +2073,8 @@ function core:StartCooldownScanTimer(delay)
 	end)
 end
 
-function core:GetLocalizedClassName(classToken)
-	local localizedClassName
-	if (classToken == "ANY") then
-		return L["Any"]
-	else
-		return LOCALIZED_CLASS_NAMES[classToken]
-	end
+function core:GetLocalizedClassName(class)
+	return (class == "ANY") and L["Any"] or LOCALIZED_CLASS_NAMES[class] or LOCALIZED_CLASS_NAMES_MALE[class]
 end
 
 function core:SortProfileSpells(a, b)
@@ -2494,12 +2482,12 @@ function core:InitializePlayer()
 
 	Player.name = name
 	Player.guid = UnitGUID("player")
-	Player.class = core:GetClassEnum(select(2, UnitClass("player")))
+	_, Player.class = UnitClass("player")
 	Player.raid = false
 	Player.party = false
 	Player.battleground = false
 
-	PLAYER_IS_WARLOCK = Player.class == core:GetClassEnum("WARLOCK")
+	PLAYER_IS_WARLOCK = (Player.class == "WARLOCK")
 end
 
 function core:UpdatePlayerGroupStatus()
@@ -2829,10 +2817,10 @@ function core:RemoveAllAbilityInstances()
 	end
 end
 
-function core:AddVirtualInstance(senderName, classEnum, spellid, duration, shared)
+function core:AddVirtualInstance(senderName, class, spellid, duration, shared)
 	local ability = nil
 	for _, a in ipairs(Abilities) do
-		if a.id == spellid and (a.class == classEnum or a.class == "ANY") then
+		if a.id == spellid and (a.class == class or a.class == "ANY") then
 			-- local name, rank, icon, cost, isFunnel, powerType, castTime, minRange, maxRange = GetSpellInfo(spellid);
 			ability = a --we're tracking it
 			break
@@ -2853,7 +2841,7 @@ function core:AddVirtualInstance(senderName, classEnum, spellid, duration, share
 		--look for any shared cooldowns and add that if necessary too
 		local sharedId = SHARED_COOLDOWNS[spellid]
 		if sharedId then
-			core:AddVirtualInstance(senderName, classEnum, sharedId, duration, true)
+			core:AddVirtualInstance(senderName, class, sharedId, duration, true)
 		end
 	end
 end
@@ -3056,7 +3044,7 @@ function core:ResetNonHermesPlayers()
 		if Hermes:IsReceiving() then
 			local sender = core:FindSenderByName(player.name)
 			if not sender then
-				core:AddSender(player.name, core:GetClassEnum(player.class), 1, player.info)
+				core:AddSender(player.name, player.class, 1, player.info)
 				--now go ahead and fire off a virtual instance for each spell
 				for id, duration in pairs(player.spellcache) do
 					local ability = core:FindTrackedAbilityById(id)
@@ -5195,12 +5183,12 @@ function core:BlizOptionsTable_SpellList()
 	end
 
 	--setup basic class structure
-	for classEnum, className in ipairs(CLASS_ENUM) do
+	for i, className in ipairs(CLASS_ENUM) do
 		local classGroup = {
 			type = "group",
 			-- inline = true,
 			name = Hermes:GetClassColorString(core:GetLocalizedClassName(className), className),
-			order = classEnum,
+			order = i,
 			args = {}
 		}
 
@@ -5504,12 +5492,12 @@ function core:BlizOptionsTable_Items()
 	end
 
 	--setup basic class structure
-	for classEnum, className in ipairs(CLASS_ENUM) do
+	for i, className in ipairs(CLASS_ENUM) do
 		local classGroup = {
 			type = "group",
 			inline = true,
 			name = Hermes:GetClassColorString(core:GetLocalizedClassName(className), className),
-			order = classEnum,
+			order = i,
 			args = {}
 		}
 
@@ -5782,8 +5770,7 @@ function core:TalentUpdate(guid, unit, info)
 		if Hermes:IsReceiving() then
 			local sender = core:FindSenderByName(player.name)
 			if not sender then
-				local classEnum = core:GetClassEnum(player.class)
-				core:AddSender(player.name, classEnum, 1, info)
+				core:AddSender(player.name, player.class, 1, info)
 				--now go ahead and fire off a virtual instance for each spell
 				for id, duration in pairs(player.spellcache) do
 					local ability = core:FindTrackedAbilityById(id)
