@@ -16,6 +16,7 @@ local C_Timer = API.C_Timer
 local GetNumGroupMembers = API.GetNumGroupMembers
 local GetNumSubgroupMembers = API.GetNumSubgroupMembers
 local IsInRaid = API.IsInRaid
+local new, del = API.TablePool()
 local _
 
 Hermes.HERMES_VERSION_STRING = HERMES_VERSION_STRING
@@ -783,6 +784,7 @@ end
 -- but once see the first one we fire the virtual instance, and we don't fire any more until we get a different spell id.
 local _lastSpell = nil
 local _lastPlayer = nil
+local _lastTarget = nil
 
 local function ConvertSpellIdIfSoulstone(spellID)
 	if spellID == SPELLID_SOULSTONERESURRECTION or spellID == SPELLID_SOULSTONERESURRECTION_WHENDEAD then
@@ -792,11 +794,11 @@ local function ConvertSpellIdIfSoulstone(spellID)
 	end
 end
 
-function Hermes:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, srcGUID, srcName, _, _, _, _, spellID)
-	core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID)
+function Hermes:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, srcGUID, srcName, _, _, dstName, _, spellID)
+	core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID, dstName)
 end
 
-function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared)
+function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared, dstName)
 	local dataExists = dbg.durations[spellID]
 
 	--this is a spell that we have an autoset value or numerical duration for
@@ -809,7 +811,7 @@ function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared)
 			local duration = player.spellcache[spellID]
 			if duration then
 				--update the cooldowns table for the player and ability
-				core:SetPlayerCooldown(player, spellID, duration)
+				core:SetPlayerCooldown(player, spellID, duration, dstName)
 
 				local sender = core:FindSenderByName(srcName)
 				local ability = core:FindTrackedAbilityById(spellID)
@@ -824,15 +826,18 @@ function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared)
 					if not shared then
 						_lastSpell = spellID
 						_lastPlayer = srcName
+						_lastTarget = dstName
 					end
 				end
 			else
 				_lastSpell = nil
 				_lastPlayer = nil
+				_lastTarget = nil
 			end
 		else
 			_lastSpell = nil
 			_lastPlayer = nil
+			_lastTarget = nil
 		end
 	end
 
@@ -846,16 +851,18 @@ function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared)
 	end
 end
 
-function core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID)
+function core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID, dstName)
 	if event ~= "SPELL_RESURRECT" and event ~= "SPELL_CAST_SUCCESS" and event ~= "SPELL_AURA_APPLIED" then
 		_lastSpell = nil
 		_lastPlayer = nil
+		_lastTarget = nil
 		return
 	end
 	--ignore weird stuff that we don't know can happen or not
 	if not srcName or not spellID or not srcGUID then
 		_lastSpell = nil
 		_lastPlayer = nil
+		_lastTarget = nil
 		return
 	end
 
@@ -875,6 +882,7 @@ function core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID)
 	-- if (srcName == Player.name) then
 	-- 	_lastSpell = nil
 	-- 	_lastPlayer = nil
+	-- 	_lastTarget = nil
 	-- 	return
 	-- end
 
@@ -882,7 +890,7 @@ function core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID)
 	--Note that 20707 is the spell that's cast via SPELL_AURA_APPLIED when warlock puts SS on player that is alive.
 	spellID = ConvertSpellIdIfSoulstone(spellID)
 
-	self:ProcessCombatLogSpell(spellID, srcGUID, srcName)
+	self:ProcessCombatLogSpell(spellID, srcGUID, srcName, nil, dstName)
 end
 
 function Hermes:OnEnable()
@@ -3072,26 +3080,34 @@ function core:GetPlayerCooldown(player, id)
 	return nil
 end
 
-function core:SetPlayerCooldown(player, id, duration)
+function core:SetPlayerCooldown(player, id, duration, target)
 	local guid = core:GetKeyForTable(Players, player) --find the guid of the player
 	local cd = dbg.cooldowns[guid]
 
 	--if duration is nil, then we want to remove the cooldown
 	if not duration then
 		if cd then
-			cd[id] = nil
+			cd[id] = del(cd[id])
 			--see if we need to remove the entry for the player completely
 			if _tableCount(cd) == 0 then
-				dbg.cooldowns[guid] = nil
+				dbg.cooldowns[guid] = del(dbg.cooldowns[guid])
 			end
 		end
 	else
 		if not cd then
 			--create new table
-			dbg.cooldowns[guid] = {}
+			dbg.cooldowns[guid] = new()
 			cd = dbg.cooldowns[guid]
 		end
-		cd[id] = {GetTime(), duration}
+		cd[id] = new()
+		cd[id][1] = GetTime()
+		cd[id][2] = duration
+
+		if target and target ~= player.name then
+			local _, class = UnitClass(target)
+			target = class and Hermes:GetClassColorString(target, class) or target
+			cd[id][3] = target
+		end
 	end
 end
 
@@ -3122,8 +3138,9 @@ end
 function core:WipeAllCooldowns()
 	if dbg.cooldowns then
 		wipe(dbg.cooldowns)
+	else
+		dbg.cooldowns = {}
 	end
-	dbg.cooldowns = {}
 end
 
 function core:GetKeyForTable(tbl, item)

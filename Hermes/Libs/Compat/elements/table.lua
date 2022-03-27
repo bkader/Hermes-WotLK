@@ -168,10 +168,13 @@ function Compat.TablePool(mode)
 
 	-- it will wipe the provided table then cache it
 	-- to be reusable later.
-	local del = function(t)
+	local del = function(t, recurse)
 		if type(t) == "table" then
 			setmetatable(t, nil)
-			for k, _ in pairs(t) do
+			for k, v in pairs(t) do
+				if recurse and type(v) == "table" then
+					del(v)
+				end
 				t[k] = nil
 			end
 			t[""] = true

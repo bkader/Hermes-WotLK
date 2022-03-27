@@ -47,34 +47,34 @@ function mod:DelDeadShaman(name)
 	end
 end
 
-function mod:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, _, _, _, destName, _, spellID, ...)
-	self:ProcessCombatLogEvent(event, destName, spellID)
+function mod:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, _, _, _, dstName, _, spellID, ...)
+	self:ProcessCombatLogEvent(event, dstName, spellID)
 end
 
-function mod:ProcessCombatLogEvent(event, destName, spellID)
+function mod:ProcessCombatLogEvent(event, dstName, spellID)
 	--we're only interested in these events
 	if event ~= "SPELL_AURA_REMOVED" and event ~= "UNIT_DIED" and event ~= "SPELL_RESURRECT" then
 		return
 	end
 
 	--target must not be nil (not sure if it ever will be though)
-	if not destName then
+	if not dstName then
 		return
 	end
 
 	--at this point, we only care about things happening to SHAMAN in our raid
-	if select(2, UnitClass(destName)) == "SHAMAN" and (UnitInRaid(destName) or UnitInParty(destName)) then
+	if select(2, UnitClass(dstName)) == "SHAMAN" and (UnitInRaid(dstName) or UnitInParty(dstName)) then
 		--a SHAMAN is about to die that has a soulstone
 		if spellID == SOULSTONE and event == "SPELL_AURA_REMOVED" then
 			--a SHAMAN just died
-			soulstones[destName] = true
+			soulstones[dstName] = true
 		elseif event == "UNIT_DIED" then
 			--a shaman just got resurrected by someone else, remove it from dead shaman and soulstones
-			deadshaman[destName] = true
+			deadshaman[dstName] = true
 			--start trying to detect Resurrection
 			self:RegisterEvent("UNIT_HEALTH")
 		elseif event == "SPELL_RESURRECT" and RESURRECTIONS[spellID] then
-			self:DelDeadShaman(destName)
+			self:DelDeadShaman(dstName)
 		end
 	end
 end
