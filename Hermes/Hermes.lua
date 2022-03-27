@@ -375,7 +375,7 @@ local function _deleteIndexedTable(tbl, item)
 end
 
 local function _deepcopy(object)
-	local lookup_table = {}
+	local lookup_table = new()
 	local function _copy(object)
 		if type(object) ~= "table" then
 			return object
@@ -389,6 +389,7 @@ local function _deepcopy(object)
 		end
 		return setmetatable(new_table, getmetatable(object))
 	end
+	del(lookup_table)
 	return _copy(object)
 end
 
@@ -1097,9 +1098,7 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 			--	4. Message needs to be sent due to cooldown change...
 			-- The point of this is to avoid sending a message to everyone when there is only one receiver interested in the spell, in which case a single message will be sent to the user
 			if (core:UpdateSenderCooldown(tracker) == true or ((tracker.dirtyReceivers and _tableCount(tracker.receivers) == #tracker.dirtyReceivers) and (tracker.dirtyReceivers and #tracker.dirtyReceivers > 1))) then
-				if (not trackerUpdates) then
-					trackerUpdates = {}
-				end
+				trackerUpdates = trackerUpdates or new()
 				tinsert(trackerUpdates, {tracker.id, tracker.duration})
 
 				--wipe out dirty receivers since a global send is going to be done
@@ -1113,7 +1112,7 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 		end
 
 		--cleanup table
-		trackerUpdates = nil
+		trackerUpdates = del(trackerUpdates, true)
 
 		local dirtyUpdates = nil
 		--loop again looking for any trackers that have dirty receivers, if a global message was sent above then this won't find anything
@@ -1121,15 +1120,9 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 			if (tracker.dirtyReceivers) then
 				for _, receiverName in ipairs(tracker.dirtyReceivers) do
 					--create dirty table if not already exists
-					if (not dirtyUpdates) then
-						dirtyUpdates = {}
-					end
-
+					dirtyUpdates = dirtyUpdates or new()
 					--add receiver if not already added
-					if (not dirtyUpdates[receiverName]) then
-						dirtyUpdates[receiverName] = {}
-					end
-
+					dirtyUpdates[receiverName] = dirtyUpdates[receiverName] or new()
 					--add the update to the receiver record
 					tinsert(dirtyUpdates[receiverName], {tracker.id, tracker.duration})
 				end
@@ -1148,7 +1141,7 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 		end
 
 		--wipe out table if exists
-		dirtyUpdates = nil
+		dirtyUpdates = del(dirtyUpdates, true)
 	end
 
 	--if this was the initial scan from just starting up, then restart the timer with the regular scan rate
@@ -1334,7 +1327,7 @@ function core:StartReceiving()
 	core:FireEvent("OnStartReceiving")
 
 	--build up spellRequests so that we can sent them all in one fat message
-	local requests = {}
+	local requests = new()
 
 	--initialize Ability list, it should already be empty
 	for i, spell in ipairs(dbp.spells) do
@@ -1355,6 +1348,7 @@ function core:StartReceiving()
 	if (#requests > 0) then
 		core:SendMessage_REQUEST_SPELLS(nil, requests)
 	end
+	del(requests)
 
 	--create all the non hermes users
 	core:ResetNonHermesPlayers()
@@ -1383,9 +1377,10 @@ function core:StopReceiving()
 end
 
 function core:RequestAbilityUpdate(id)
-	local trackerRequests = {}
+	local trackerRequests = new()
 	tinsert(trackerRequests, id)
 	core:SendMessage_REQUEST_SPELLS(nil, trackerRequests)
+	del(trackerRequests)
 end
 
 function core:HandleRemoteSender(senderName, class, resetIfExists)
@@ -1408,12 +1403,13 @@ function core:HandleRemoteSender(senderName, class, resetIfExists)
 	end
 
 	if (not sender) then
-		info = {}
+		local info = new()
 		core:AddSender(senderName, class, nil, info)
+		del(info)
 	end
 
 	--build up spellRequests
-	local requests = {}
+	local requests = new()
 	for _, ability in ipairs(Abilities) do
 		--only add spells that apply to the class
 		if (ability.class == class or ability.class == "ANY") then
@@ -1425,6 +1421,7 @@ function core:HandleRemoteSender(senderName, class, resetIfExists)
 	if (#requests > 0) then
 		core:SendMessage_REQUEST_SPELLS(senderName, requests)
 	end
+	del(requests)
 end
 
 function core:ProcessMessage_INITIALIZE_SENDER(senderName, class, channel)
@@ -1518,12 +1515,12 @@ function core:HandleTrackerRequests(receiverName, trackerRequests)
 					local receiver = t.receivers[receiverName]
 					--we don't know this receiver yet, add it
 					if (not receiver) then
-						t.receivers[receiverName] = {}
+						t.receivers[receiverName] = new()
 					end
 
 					--mark this receiver as dirty
 					if (not t.dirtyReceivers) then
-						t.dirtyReceivers = {}
+						t.dirtyReceivers = new()
 					end
 					tinsert(t.dirtyReceivers, receiverName)
 
@@ -1534,12 +1531,13 @@ function core:HandleTrackerRequests(receiverName, trackerRequests)
 
 			--we're not tracking this spell yet
 			if (not tracker) then
-				tracker = {id = tid, receivers = {}}
-				tracker.receivers[receiverName] = {} --add the receiver to the spell
+				tracker = new()
+				tracker.id, tracker.receivers = tid, new()
+				tracker.receivers[receiverName] = new() --add the receiver to the spell
 				tinsert(Sender.Trackers, tracker) --add the spell
 
 				--mark this receiver as dirty
-				tracker.dirtyReceivers = {}
+				tracker.dirtyReceivers = new()
 				tinsert(tracker.dirtyReceivers, receiverName)
 			end
 		end
@@ -2093,16 +2091,18 @@ function core:SortProfileItems(a, b)
 	return a.name < b.name
 end
 
-function core:GetSpellID(spell)
+do
 	local matches = {}
-	for i = 1, 100000 do
-		local name, rank, icon, powerCost, _, powerType, castingTime, minRange, maxRange = GetSpellInfo(i)
-		if name == spell then
-			tinsert(matches, i)
+	function core:GetSpellID(spell)
+		wipe(matches)
+		for i = 1, 100000 do
+			local name, rank, icon, powerCost, _, powerType, castingTime, minRange, maxRange = GetSpellInfo(i)
+			if name == spell then
+				tinsert(matches, i)
+			end
 		end
+		return matches
 	end
-
-	return matches
 end
 
 function core:EncodeAbilityId(id, trackertype) --spells have positive id's, items have negative id's, returns the type and a positive id
@@ -2950,7 +2950,7 @@ function core:RemoveAbilityInstance(instance)
 end
 
 function core:RemoveAbilityInstancesForAbility(ability)
-	local items = {}
+	local items = new()
 
 	--first find all the matches
 	for _, instance in ipairs(AbilityInstances) do
@@ -2963,10 +2963,12 @@ function core:RemoveAbilityInstancesForAbility(ability)
 	for _, instance in ipairs(items) do
 		core:RemoveAbilityInstance(instance)
 	end
+
+	del(items, true)
 end
 
 function core:RemoveAbilityInstancesForSender(sender)
-	local items = {}
+	local items = new()
 
 	--first find all the matches
 	for _, instance in ipairs(AbilityInstances) do
@@ -2979,6 +2981,8 @@ function core:RemoveAbilityInstancesForSender(sender)
 	for _, instance in ipairs(items) do
 		core:RemoveAbilityInstance(instance)
 	end
+
+	del(items, true)
 end
 
 ------------------------------------------------------------------
@@ -2998,7 +3002,7 @@ function core:ProcessPlayer(guid, info)
 	local isnew = nil
 
 	if not Players[guid] then
-		Players[guid] = {}
+		Players[guid] = new()
 		isnew = 1
 	end
 
@@ -3139,7 +3143,7 @@ function core:WipeAllCooldowns()
 	if dbg.cooldowns then
 		wipe(dbg.cooldowns)
 	else
-		dbg.cooldowns = {}
+		dbg.cooldowns = new()
 	end
 end
 
@@ -3313,7 +3317,7 @@ function core:BuildPlayerSpellCache(player, guid)
 	if player.spellcache then
 		wipe(player.spellcache)
 	end
-	player.spellcache = {}
+	player.spellcache = new()
 	local unit = core:GetUnitFromName(player.name)
 
 	if not unit then
@@ -3447,11 +3451,9 @@ local function refreshTalentLookups(class)
 		_lastClass = class
 
 		--build up talentSpec values
-		_specializations = {}
-		local _specializationKeys = {}
-		local _specializationValues = {}
-		_talentNameKeys = {} --the keys in this table match the keys in the values table
-		_talentNameValues = {}
+		wipe(_specializations)
+		wipe(_talentNameKeys) --the keys in this table match the keys in the values table
+		wipe(_talentNameValues)
 
 		if dbg.classes then
 			local talentRoot = dbg.classes[class]
