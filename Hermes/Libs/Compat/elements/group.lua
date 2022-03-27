@@ -6,6 +6,7 @@ local QuickDispatch = Compat.Private.QuickDispatch
 
 local format = string.format
 local strmatch = string.match
+local select = select
 
 local GetNumPartyMembers = GetNumPartyMembers
 local GetNumRaidMembers = GetNumRaidMembers
@@ -148,6 +149,9 @@ function Compat.UnitIsGroupLeader(unit)
 		return (Compat.IsInRaid() and IsRaidLeader() or IsPartyLeader())
 	else
 		local index = strmatch(unit, "%d+")
+		if Compat.IsInRaid() then
+			return (index and select(2, GetRaidRosterInfo(index)) == 2)
+		end
 		return (index and GetPartyLeaderIndex() == tonumber(index))
 	end
 end
