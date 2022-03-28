@@ -164,13 +164,13 @@ Hermes.SPELL_MONITOR_SCHEMA = {
 		-- ITEMS -- TODO: FIXME
 		-- [10725] = {duration = 90}, -- Gnomish Battle Chicken
 		-- [54861] = duration_5s, -- Nitro Boosts
-		-- [67699] = duration_15s, -- Juggernaut/Satrina Normal
-		-- [67753] = duration_15s, -- Juggernaut/Satrina Heroic
+		-- [67699] = duration_15s, -- Juggernaut/Satrina (Normal)
+		-- [67753] = duration_15s, -- Juggernaut/Satrina (Heroic)
 		-- [71586] = duration_10s, -- Corroded Skeleton Key
-		-- [71635] = duration_10s, -- sindy nm
-		-- [71638] = duration_10s, -- sindy hc
-		-- [75490] = duration_15s, -- GTS NM
-		-- [75495] = duration_15s, -- GTS HC
+		-- [71635] = duration_10s, -- Sindragosa's Flawless Fang (Normal)
+		-- [71638] = duration_10s, -- Sindragosa's Flawless Fang (Heroic)
+		-- [75490] = duration_15s, -- Glowing Twilight Scale (Normal)
+		-- [75495] = duration_15s, -- Glowing Twilight Scale (Heroic)
 	},
 	["requirements"] = {
 		-- level requirement
@@ -479,13 +479,13 @@ Hermes.SPELL_MONITOR_SCHEMA = {
 		-- [10725] = 1200, -- Gnomish Battle Chicken
 		-- [37863] = 3600, -- Direbrew's Remote
 		-- [54861] = 180, -- Nitro Boosts
-		-- [67699] = 180, -- Juggernaut/Satrina Normal
-		-- [67753] = 180, -- Juggernaut/Satrina Heroic
+		-- [67699] = 180, -- Juggernaut/Satrina (Normal)
+		-- [67753] = 180, -- Juggernaut/Satrina (Heroic)
 		-- [71586] = 120, -- Corroded Skeleton Key
-		-- [71635] = 60, -- sindy nm
-		-- [71638] = 60, -- sindy hc
-		-- [75490] = 120, -- GTS NM
-		-- [75495] = 120, -- GTS HC
+		-- [71635] = 60, -- Sindragosa's Flawless Fang (Normal)
+		-- [71638] = 60, -- Sindragosa's Flawless Fang (Heroic)
+		-- [75490] = 120, -- Glowing Twilight Scale (Normal)
+		-- [75495] = 120, -- Glowing Twilight Scale (Heroic)
 	},
 	["adjustments"] = {}
 }

@@ -136,31 +136,10 @@ function mod:LockFrame(frame, force) --shows or hides the anchor and enabled/dis
 	--we don't actually hide the window because everything is parented to it.
 	--instead we'll just change the properties to make it appear invisible
 	if frame.profile.locked == true or force then
-		--frame.header:EnableMouse(false)
-		--frame.header:SetBackdrop(nil)
-		--frame.header:SetBackdropColor(0, 0, 0, 0)
-		--frame.header:SetBackdropBorderColor(0, 0, 0, 0)
 		frame.header:Hide()
 		frame.resizer:EnableMouse(false)
 		frame.resizer:Hide()
 	else
-		-- TODO: FIXME
-		-- frame.header:EnableMouse(true)
-		-- frame.header:SetBackdrop({
-		-- 	bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
-		-- 	edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
-		-- 	tile = false,
-		-- 	tileSize = 32,
-		-- 	edgeSize = 10,
-		-- 	insets = {
-		-- 		left = 0,
-		-- 		right = 0,
-		-- 		top = 0,
-		-- 		bottom = 0,
-		-- 	}
-		-- })
-		-- frame.header:SetBackdropColor(0.6, 0.6, 0.6, 0.7)
-		-- frame.header:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.7)
 		frame.header:Show()
 		frame.resizer:EnableMouse(true)
 		frame.resizer:Show()

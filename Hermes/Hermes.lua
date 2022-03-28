@@ -315,19 +315,19 @@ local DEFAULT_SPELLS = {
 }
 
 local DEFAULT_ITEMS = {
-	{"ANY", 10725}, -- Gnomish Battle Chicken
-	{"ANY", 21946}, -- Ectoplasmic Distiller
-	{"ANY", 37863}, -- Direbrew's Remote
-	{"ANY", 47080, "Alliance"}, -- Satrina Normal
-	{"ANY", 47088, "Alliance"}, -- Satrina Heroic
-	{"ANY", 47290, "Horde"}, -- Juggernaut Normal
-	{"ANY", 47451, "Horde"}, -- Juggernaut Heroic
-	{"ANY", 50356}, -- Corroded Skeleton Key
-	{"ANY", 50361}, -- sindy nm
-	{"ANY", 50364}, -- sindy hc
-	{"ANY", 54573}, -- GTS NM
-	{"ANY", 54589}, -- GTS HC
-	{"ANY", 54861}, -- Nitro Boosts
+	-- {"ANY", 10725, nil, 23133}, -- Gnomish Battle Chicken
+	-- {"ANY", 21946, nil, 27433}, -- Ectoplasmic Distiller
+	-- {"ANY", 37863, nil, 49844}, -- Direbrew's Remote
+	-- {"ANY", 47080, "Alliance", 67699}, -- Satrina's Impeding Scarab (Normal)
+	-- {"ANY", 47088, "Alliance", 67753}, -- Satrina's Impeding Scarab (Heroic)
+	-- {"ANY", 47290, "Horde", 67699}, -- Juggernaut's Vitality (Normal)
+	-- {"ANY", 47451, "Horde", 67753}, -- Juggernaut's Vitality (Heroic)
+	-- {"ANY", 50356, nil, 71586}, -- Corroded Skeleton Key
+	-- {"ANY", 50361, nil, 71635}, -- Sindragosa's Flawless Fang (Normal)
+	-- {"ANY", 50364, nil, 71638}, -- Sindragosa's Flawless Fang (Heroic)
+	-- {"ANY", 54573, nil, 75490}, -- Glowing Twilight Scale (Normal)
+	-- {"ANY", 54589, nil, 75495}, -- Glowing Twilight Scale (Heroic)
+	-- {"ANY", 54861, nil}, -- Nitro Boosts
 }
 
 local EQUIPPABLE_SLOTS = {
@@ -4516,9 +4516,11 @@ function core:LoadBlizOptions()
 				type = "group",
 				childGroups = "tab",
 				order = 2,
-				disabled = function()
-					return dbp.enabled == false
-				end,
+				disabled = true,
+				-- TODO: FIXME
+				-- disabled = function()
+				-- 	return dbp.enabled == false
+				-- end,
 				args = {}
 			},
 			Maintenance = {
