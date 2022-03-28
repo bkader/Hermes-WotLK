@@ -1474,8 +1474,11 @@ end
 
 function core:StartSending()
 	--init Sender
-	Sender = {}
-	Sender.Trackers = {}
+	if Sender then
+		Sender.Trackers = wipe(Sender.Trackers or {})
+	else
+		Sender = {Trackers = {}}
+	end
 
 	--initialize display stuff
 	core:FireEvent("OnStartSending")
