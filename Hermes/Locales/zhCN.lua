@@ -1,7 +1,6 @@
 local L = LibStub("AceLocale-3.0"):NewLocale("Hermes", "zhCN")
 if not L then return end
 
--- L["Add"] = "Add"
 -- L["Alive"] = "Alive"
 -- L["Anchor Point"] = "Anchor Point"
 -- L["Available Bar Color"] = "Available Bar Color"
@@ -41,7 +40,6 @@ if not L then return end
 -- L["Lock Window"] = "Lock Window"
 -- L["Merge Spells"] = "Merge Spells"
 -- L["Name on Right"] = "Name on Right"
--- L["None"] = "None"
 -- L["None found"] = "None found"
 -- L["On Cooldown Bar Color"] = "On Cooldown Bar Color"
 -- L["On Cooldown Font Color"] = "On Cooldown Font Color"
@@ -50,7 +48,6 @@ if not L then return end
 -- L["Padding"] = "Padding"
 -- L["Player/Duration Width Ratio (%)"] = "Player/Duration Width Ratio (%)"
 -- L["Range"] = "Range"
--- L["Ready"] = "Ready"
 -- L["Requires spell metadata key duration. If such a key exists, an additional timer bar will be displayed based on it's value. For example. you could supply a duration key with a value of 6 for Divine Guardian's 6 second duration."] = "Requires spell metadata key duration. If such a key exists, an additional timer bar will be displayed based on it's value. For example. you could supply a duration key with a value of 6 for Divine Guardian's 6 second duration."
 -- L["Reset Position"] = "Reset Position"
 -- L["Reverse Direction"] = "Reverse Direction"

@@ -1,7 +1,6 @@
 local L = LibStub("AceLocale-3.0"):NewLocale("Hermes", "ruRU")
 if not L then return end
 
-L["Add"] = "Добавить" -- Needs review
 L["Alive"] = "Активно" -- Needs review
 L["Anchor Point"] = "Якорь" -- Needs review
 L["Available Bar Color"] = "Доступный цвет панели" -- Needs review
@@ -41,7 +40,6 @@ L["Left to Right"] = "Слева направо" -- Needs review
 L["Lock Window"] = "Заблокировать окно" -- Needs review
 L["Merge Spells"] = "Слияние заклинаний" -- Needs review
 L["Name on Right"] = "Имя справа" -- Needs review
-L["None"] = "Нет" -- Needs review
 L["None found"] = "Не найдено" -- Needs review
 L["On Cooldown Bar Color"] = "Цвет панели отсчета" -- Needs review
 L["On Cooldown Font Color"] = "Цвет шрифта отсчета" -- Needs review
@@ -50,7 +48,6 @@ L["Outline"] = "Контур" -- Needs review
 L["Padding"] = "Заполнение" -- Needs review
 L["Player/Duration Width Ratio (%)"] = "Соотношение ширины Игрок/Длительность (%)" -- Needs review
 L["Range"] = "Расстояние" -- Needs review
-L["Ready"] = "Готово" -- Needs review
 L["Requires spell metadata key duration. If such a key exists, an additional timer bar will be displayed based on it's value. For example. you could supply a duration key with a value of 6 for Divine Guardian's 6 second duration."] = "Требуется ключевая длительность метаданных заклинания. Если такое значение существует, дополнительный панель-таймер будет показан основываясь на значении. Например: можно установить ключевую длительность значением 6 для заклинания Божественный защитник, длительность которого 6 секунд." -- Needs review
 L["Reset Position"] = "Сбросить Позицию" -- Needs review
 L["Reverse Direction"] = "Обратное направление" -- Needs review

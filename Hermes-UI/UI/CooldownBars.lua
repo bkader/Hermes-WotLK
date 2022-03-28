@@ -25,41 +25,8 @@ local NEW_INSTANCE_THRESHOLD = 1 --catch when an instance going on cooldown shou
 -----------------------------------------------------------------------
 -- HELPERS
 -----------------------------------------------------------------------
-local function _deepcopy(object)
-	local lookup_table = {}
-	local function _copy(object)
-		if type(object) ~= "table" then
-			return object
-		elseif lookup_table[object] then
-			return lookup_table[object]
-		end
-		local new_table = {}
-		lookup_table[object] = new_table
-		for index, value in pairs(object) do
-			new_table[_copy(index)] = _copy(value)
-		end
-		return setmetatable(new_table, getmetatable(object))
-	end
-	return _copy(object)
-end
-
-local function _findTableIndex(tbl, item)
-	for index, i in ipairs(tbl) do
-		if (i == item) then
-			return index
-		end
-	end
-
-	return nil
-end
-
-local function _deleteFromIndexedTable(tbl, item)
-	local index = _findTableIndex(tbl, item)
-	if not index then
-		error("failed to locate item in table")
-	end
-	tremove(tbl, index)
-end
+local _deepcopy = Hermes._deepcopy
+local _deleteIndexedTable = Hermes._deleteIndexedTable
 
 -----------------------------------------------------------------------
 -- FRAME
@@ -179,7 +146,7 @@ function mod:FetchFrame(profile)
 	local frame
 	if (#FRAMEPOOL.Frames > 0) then
 		frame = FRAMEPOOL.Frames[1]
-		_deleteFromIndexedTable(FRAMEPOOL.Frames, frame)
+		_deleteIndexedTable(FRAMEPOOL.Frames, frame)
 	else
 		frame = self:CreateFrame()
 	end
@@ -290,8 +257,10 @@ function mod:InitBar(frame, bar, instance) --sets all necessary first time value
 	LIBBars:SetFontColorDuration(bar, 1, 1, 1, 1)
 	LIBBars:SetFont(bar, font, profile.fontsize, true)
 
-	if profile.barShowSpellName == true then
-		bar.text:SetText(playername .. "-" .. instance.ability.name)
+	if profile.barShowTargetName and instance.target then
+		bar.text:SetText(playername .. " > " ..Hermes:GetClassColorString(instance.target, instance.targetClass))
+	elseif profile.barShowSpellName == true then
+		bar.text:SetText(playername .. " - " .. instance.ability.name)
 	else
 		bar.text:SetText(playername)
 	end
@@ -314,7 +283,7 @@ function mod:InitBar(frame, bar, instance) --sets all necessary first time value
 end
 
 function mod:RecycleBar(bar) --recycles an existing bar
-	_deleteFromIndexedTable(bar.frame.bars, bar)
+	_deleteIndexedTable(bar.frame.bars, bar)
 	bar.instance = nil
 	bar.frame = nil
 	bar:ClearAllPoints()
@@ -360,7 +329,8 @@ function mod:GetViewDefaults() --REQUIRED
 		osCooldownStyle = "full",
 		osCooldownDirection = "right",
 		osFGColor = {r = 0, g = 1, b = 0, a = 1},
-		barShowSpellName = false
+		barShowSpellName = false,
+		barShowTargetName = false,
 	}
 
 	return defaults
@@ -468,6 +438,19 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 						self:ReinitBars(frame)
 					end
 				},
+				barShowTargetName = {
+					type = "toggle",
+					name = L["Show Target Name"],
+					width = "full",
+					get = function(info)
+						return profile.barShowTargetName
+					end,
+					order = 10,
+					set = function(info, value)
+						profile.barShowTargetName = value
+						self:ReinitBars(frame)
+					end
+				},
 				barTextSide = {
 					type = "toggle",
 					name = L["Swap Name and Duration"],
@@ -475,7 +458,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 					get = function(info)
 						return profile.barTextSide == "right"
 					end,
-					order = 10,
+					order = 15,
 					set = function(info, value)
 						if value == true then
 							profile.barTextSide = "right"
@@ -492,7 +475,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 					get = function(info)
 						return profile.barIcon
 					end,
-					order = 15,
+					order = 20,
 					style = "dropdown",
 					set = function(info, value)
 						profile.barIcon = value
@@ -507,7 +490,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 				barCooldownStyle = {
 					type = "select",
 					name = L["Cooldown Style"],
-					order = 20,
+					order = 25,
 					style = "dropdown",
 					width = "full",
 					get = function(info)
@@ -529,7 +512,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 					get = function(info)
 						return profile.barCooldownDirection == "left"
 					end,
-					order = 25,
+					order = 30,
 					set = function(info, value)
 						if value == true then
 							profile.barCooldownDirection = "left"

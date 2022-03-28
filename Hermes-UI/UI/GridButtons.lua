@@ -3,11 +3,14 @@ local UI = LibStub("AceAddon-3.0"):GetAddon("Hermes-UI")
 local ViewManager = UI:GetModule("ViewManager")
 local LBF = LibStub("LibButtonFacade", true)
 
+local L = LibStub("AceLocale-3.0"):GetLocale("Hermes-UI")
+
 local VIEW_NAME = "GridButtons"
 local LBFName = "Hermes-UI-" .. VIEW_NAME
 local mod = ViewManager:NewModule(VIEW_NAME)
 
-local L = LibStub("AceLocale-3.0"):GetLocale("Hermes-UI")
+local ICON_TEX = "|T%s:0:0:0:0|t"
+local ICON_TEX_STR = "|T%s:0:0:0:0|t %s"
 
 local function LBFRegisterCallback(arg, skin, gloss, backdrop, viewName, button, colors)
 	if viewName then
@@ -48,41 +51,9 @@ local SpellIdFont = nil
 -----------------------------------------------------------------------
 -- HELPERS
 -----------------------------------------------------------------------
-local function _deepcopy(object)
-	local lookup_table = {}
-	local function _copy(object)
-		if type(object) ~= "table" then
-			return object
-		elseif lookup_table[object] then
-			return lookup_table[object]
-		end
-		local new_table = {}
-		lookup_table[object] = new_table
-		for index, value in pairs(object) do
-			new_table[_copy(index)] = _copy(value)
-		end
-		return setmetatable(new_table, getmetatable(object))
-	end
-	return _copy(object)
-end
-
-local function _findTableIndex(tbl, item)
-	for index, i in ipairs(tbl) do
-		if (i == item) then
-			return index
-		end
-	end
-
-	return nil
-end
-
-local function _deleteFromIndexedTable(tbl, item)
-	local index = _findTableIndex(tbl, item)
-	if not index then
-		error("failed to locate item in table")
-	end
-	tremove(tbl, index)
-end
+local _deepcopy = Hermes._deepcopy
+local _tableIndex = Hermes._tableIndex
+local _deleteIndexedTable = Hermes._deleteIndexedTable
 
 local function _rotateTexture(self, angle)
 	local function GetCorner(angle)
@@ -355,7 +326,7 @@ function mod:FetchFrame(profile)
 	local frame
 	if (#FRAMEPOOL.Frames > 0) then
 		frame = FRAMEPOOL.Frames[1]
-		_deleteFromIndexedTable(FRAMEPOOL.Frames, frame)
+		_deleteIndexedTable(FRAMEPOOL.Frames, frame)
 	else
 		frame = self:CreateFrame()
 	end
@@ -705,7 +676,7 @@ function mod:RecycleCell(frame, cell)
 	--TODO: This isn't working and I can't figure it out, moving on.
 	CooldownFrame_SetTimer(cell.button.cooldown, 0, 0, 1)
 
-	_deleteFromIndexedTable(frame.cells, cell)
+	_deleteIndexedTable(frame.cells, cell)
 	tinsert(CELLPOOL.Cells, cell)
 
 	---------------------------------------------------------------
@@ -810,7 +781,7 @@ function mod:FetchCell()
 	local cell
 	if (#CELLPOOL.Cells > 0) then
 		cell = CELLPOOL.Cells[1]
-		_deleteFromIndexedTable(CELLPOOL.Cells, cell)
+		_deleteIndexedTable(CELLPOOL.Cells, cell)
 	else
 		cell = self:CreateCell()
 	end
@@ -956,8 +927,8 @@ end
 
 function mod:SortCells(frame)
 	sort(frame.cells, function(a, b)
-		local ia = _findTableIndex(frame.view.abilities, a.ability)
-		local ib = _findTableIndex(frame.view.abilities, b.ability)
+		local ia = _tableIndex(frame.view.abilities, a.ability)
+		local ib = _tableIndex(frame.view.abilities, b.ability)
 		return ia < ib
 	end)
 end
@@ -975,50 +946,42 @@ function mod:RefreshTooltipMerged()
 	local cell = ToolTip.cell
 	local instances = cell.frame.view.instances["all"]
 
-	local spellLine = ToolTip:AddLine("", "", "", "", "")
+	local spellLine = ToolTip:AddLine("", "", "", "", "", "")
 	ToolTip:SetCell(spellLine, 1, cell.frame.view.name, nil, "LEFT", nil, nil, 1, nil, 130, nil)
-	ToolTip:SetCell(spellLine, 5, "", SpellIdFont, "RIGHT", nil, nil, nil, 1, nil, nil)
+	ToolTip:SetCell(spellLine, 6, "", SpellIdFont, "RIGHT", nil, nil, nil, 1, nil, nil)
 	ToolTip:SetLineColor(spellLine, 1, 1, 1, 0.4)
 
 	if (not instances or #instances == 0) then
 		ToolTip:AddSeparator(1)
 		local line = ToolTip:AddLine("", "", "", "", "")
-		ToolTip:SetCell(line, 1, L["None found"], nil, "LEFT", 5) --set the id
+		ToolTip:SetCell(line, 1, L["None found"], nil, "LEFT", 6) --set the id
 	else
-		ToolTip:AddLine(" ", L["Time"], L["Alive"], L["Conn"], L["Range"])
+		ToolTip:AddLine(" ", L["Time"], L["Alive"], L["Conn"], L["Range"], L["Target"])
 
 		ToolTip:AddSeparator(1)
 
 		for _, instance in ipairs(instances) do
 			local sender = instance.sender
 
-			--available, playername, duration, alive, visibility, online
-			-- local iconAvailable
-			-- if not instance.remaining and sender.dead == false and sender.online == true and sender.visible then
-			-- 	iconAvailable = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
-			-- else
-			-- 	iconAvailable = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
-			-- end
-
 			local iconDead
 			if (sender.dead) then
-				iconDead = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+				iconDead = format(ICON_TEX, ICON_STATUS_NOTREADY)
 			else
-				iconDead = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+				iconDead = format(ICON_TEX, ICON_STATUS_READY)
 			end
 
 			local iconOnline
 			if (sender.online == true) then
-				iconOnline = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+				iconOnline = format(ICON_TEX, ICON_STATUS_READY)
 			else
-				iconOnline = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+				iconOnline = format(ICON_TEX, ICON_STATUS_NOTREADY)
 			end
 
 			local iconRange
 			if sender.visible then
-				iconRange = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+				iconRange = format(ICON_TEX, ICON_STATUS_READY)
 			else
-				iconRange = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+				iconRange = format(ICON_TEX, ICON_STATUS_NOTREADY)
 			end
 
 			local h, m, s = _secondsToClock(instance.remaining)
@@ -1050,14 +1013,13 @@ function mod:RefreshTooltipMerged()
 				durationText = "|cFFFF0000" .. timeLeft .. "|r" --red
 			end
 
-			local line =
-				ToolTip:AddLine(
-				"|T" .. instance.ability.icon .. ":0:0:0:0|t " .. Hermes:GetClassColorString(sender.name, sender.class),
-				" " .. durationText,
-				" " .. iconDead,
-				" " .. iconOnline,
-				" " .. iconRange
-			)
+			local target = L["None"]
+			if instance.target then
+				target = Hermes:GetClassColorString(instance.target, instance.targetClass)
+			end
+
+			local iconName = format(ICON_TEX_STR, instance.ability.icon, Hermes:GetClassColorString(sender.name, sender.class))
+			ToolTip:AddLine(iconName, durationText, iconDead, iconOnline, iconRange, target)
 		end
 	end
 end
@@ -1077,30 +1039,22 @@ function mod:RefreshTooltip()
 		local ability = cell.ability
 		local instances = cell.frame.view.instances[ability]
 
-		local spellLine = ToolTip:AddLine("", "", "", "", "")
+		local spellLine = ToolTip:AddLine("", "", "", "", "", "")
 		ToolTip:SetCell(spellLine, 1, ability.name, nil, "LEFT", nil, nil, 1, nil, 130)
-		ToolTip:SetCell(spellLine, 5, tostring(Hermes:AbilityIdToBlizzId(ability.id)), SpellIdFont, "RIGHT", nil, nil, nil, 1)
+		ToolTip:SetCell(spellLine, 6, tostring(Hermes:AbilityIdToBlizzId(ability.id)), SpellIdFont, "RIGHT", nil, nil, nil, 1)
 		ToolTip:SetLineColor(spellLine, 1, 1, 1, 0.4)
 
 		if (#instances == 0) then
 			ToolTip:AddSeparator(1)
 			local line = ToolTip:AddLine("", "", "", "", "")
-			ToolTip:SetCell(line, 1, L["None found"], nil, "LEFT", 5) --set the id
+			ToolTip:SetCell(line, 1, L["None found"], nil, "LEFT", 6) --set the id
 		else
-			ToolTip:AddLine(" ", L["Time"], L["Alive"], L["Conn"], L["Range"])
+			ToolTip:AddLine(" ", L["Time"], L["Alive"], L["Conn"], L["Range"], L["Target"])
 
 			ToolTip:AddSeparator(1)
 
 			for _, instance in ipairs(instances) do
 				local sender = instance.sender
-
-				--available, playername, duration, alive, visibility, online
-				-- local iconAvailable
-				-- if not instance.remaining and sender.dead == false and sender.online == true and sender.visible then
-				-- 	iconAvailable = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
-				-- else
-				-- 	iconAvailable = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
-				-- end
 
 				local iconDead
 				if (sender.dead) then
@@ -1152,7 +1106,12 @@ function mod:RefreshTooltip()
 					durationText = "|cFFFF0000" .. timeLeft .. "|r" --red
 				end
 
-				local line = ToolTip:AddLine(Hermes:GetClassColorString(sender.name, sender.class), " " .. durationText, " " .. iconDead, " " .. iconOnline, " " .. iconRange)
+				local target = L["None"]
+				if instance.target then
+					target = Hermes:GetClassColorString(instance.target, instance.targetClass)
+				end
+
+				ToolTip:AddLine(Hermes:GetClassColorString(sender.name, sender.class), durationText, iconDead, iconOnline, iconRange, target)
 			end
 		end
 
@@ -1168,7 +1127,7 @@ end
 
 function mod:ShowTooltip(cell, anchor)
 	if ToolTip == nil then
-		ToolTip = QTip:Acquire("ViewManager" .. VIEW_NAME .. "Tooltip", 5, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
+		ToolTip = QTip:Acquire("ViewManager" .. VIEW_NAME .. "Tooltip", 6, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
 		ToolTip:ClearAllPoints()
 		ToolTip:SmartAnchorTo(anchor)
 		ToolTip.cell = cell

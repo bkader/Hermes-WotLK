@@ -29,7 +29,6 @@ local MIN_FRAME_HEIGHT = 40
 local HEADER_HEIGHT = 18
 local ICON_RESIZE = [[Interface\AddOns\Hermes-UI\Textures\Resize.tga]]
 local ICON_RESET = [[Interface\AddOns\Hermes-UI\Textures\Reset.tga]]
-
 local ICON_STATUS_NOTREADY = [[Interface\RAIDFRAME\ReadyCheck-NotReady]]
 local ICON_STATUS_READY = [[Interface\RAIDFRAME\ReadyCheck-Ready]]
 
@@ -38,41 +37,8 @@ local format = format or string.format
 -----------------------------------------------------------------------
 -- HELPERS
 -----------------------------------------------------------------------
-local function _deepcopy(object)
-	local lookup_table = {}
-	local function _copy(object)
-		if type(object) ~= "table" then
-			return object
-		elseif lookup_table[object] then
-			return lookup_table[object]
-		end
-		local new_table = {}
-		lookup_table[object] = new_table
-		for index, value in pairs(object) do
-			new_table[_copy(index)] = _copy(value)
-		end
-		return setmetatable(new_table, getmetatable(object))
-	end
-	return _copy(object)
-end
-
-local function _findTableIndex(tbl, item)
-	for index, i in ipairs(tbl) do
-		if (i == item) then
-			return index
-		end
-	end
-
-	return nil
-end
-
-local function _deleteFromIndexedTable(tbl, item)
-	local index = _findTableIndex(tbl, item)
-	if not index then
-		error("failed to locate item in table")
-	end
-	tremove(tbl, index)
-end
+local _deepcopy = Hermes._deepcopy
+local _deleteIndexedTable = Hermes._deleteIndexedTable
 
 local function _rotateTexture(self, angle)
 	local function GetCorner(angle)
@@ -473,29 +439,28 @@ function mod:AddMessage(frame, msg)
 	self:UpdateScrollPosition(frame)
 end
 
+local outputStr = "|T%s:0:0:0:0|t %s %s"
 function mod:AddMessageUsed(frame, instance)
-	local link = GetSpellLink(instance.ability.id)
-	if link then
-		self:AddMessage(frame, format("|T%s:0:0:0:0|t %s %s", ICON_STATUS_NOTREADY, Hermes:GetClassColorString(instance.sender.name, instance.sender.class), link))
+	local link = GetSpellLink(instance.ability.id) or instance.ability.name
+	local output = format(outputStr, ICON_STATUS_NOTREADY, Hermes:GetClassColorString(instance.sender.name, instance.sender.class), link)
+
+	if instance.target then --add target
+		self:AddMessage(frame, output .. " > " .. Hermes:GetClassColorString(instance.target, instance.targetClass))
 	else
-		self:AddMessage(frame, format("|T%s:0:0:0:0|t %s %s", ICON_STATUS_NOTREADY, Hermes:GetClassColorString(instance.sender.name, instance.sender.class), instance.ability.name))
+		self:AddMessage(frame, output)
 	end
 end
 
 function mod:AddMessageReady(frame, instance)
-	local link = GetSpellLink(instance.ability.id)
-	if link then
-		self:AddMessage(frame, format("|T%s:0:0:0:0|t %s %s", ICON_STATUS_READY, Hermes:GetClassColorString(instance.sender.name, instance.sender.class), link))
-	else
-		self:AddMessage(frame, format("|T%s:0:0:0:0|t %s %s", ICON_STATUS_READY, Hermes:GetClassColorString(instance.sender.name, instance.sender.class), instance.ability.name))
-	end
+	local link = GetSpellLink(instance.ability.id) or instance.ability.name
+	self:AddMessage(frame, format(outputStr, ICON_STATUS_READY, Hermes:GetClassColorString(instance.sender.name, instance.sender.class), link))
 end
 
 function mod:FetchFrame(profile)
 	local frame
 	if (#FRAMEPOOL.Frames > 0) then
 		frame = FRAMEPOOL.Frames[1]
-		_deleteFromIndexedTable(FRAMEPOOL.Frames, frame)
+		_deleteIndexedTable(FRAMEPOOL.Frames, frame)
 	else
 		frame = self:CreateFrame()
 	end

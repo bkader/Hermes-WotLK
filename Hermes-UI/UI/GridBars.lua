@@ -34,6 +34,8 @@ local TOOLTIP_HOVER_THROTTLE = 0.1
 local ICON_STATUS_NOTREADY = [[Interface\RAIDFRAME\ReadyCheck-NotReady.blp]]
 local ICON_STATUS_READY = [[Interface\RAIDFRAME\ReadyCheck-Ready.blp]]
 local NEW_INSTANCE_THRESHOLD = 1 --catch when an instance going on cooldown should animate using 2ndcooldown metadata or not
+local ICON_TEX = "|T%s:0:0:0:0|t"
+local ICON_TEX_STR = "|T%s:0:0:0:0|t %s"
 
 --ToolTip
 local QTip = LibStub("LibQTip-1.0")
@@ -42,41 +44,9 @@ local SpellIdFont = nil
 -----------------------------------------------------------------------
 -- HELPERS
 -----------------------------------------------------------------------
-local function _deepcopy(object)
-	local lookup_table = {}
-	local function _copy(object)
-		if type(object) ~= "table" then
-			return object
-		elseif lookup_table[object] then
-			return lookup_table[object]
-		end
-		local new_table = {}
-		lookup_table[object] = new_table
-		for index, value in pairs(object) do
-			new_table[_copy(index)] = _copy(value)
-		end
-		return setmetatable(new_table, getmetatable(object))
-	end
-	return _copy(object)
-end
-
-local function _findTableIndex(tbl, item)
-	for index, i in ipairs(tbl) do
-		if (i == item) then
-			return index
-		end
-	end
-
-	return nil
-end
-
-local function _deleteFromIndexedTable(tbl, item)
-	local index = _findTableIndex(tbl, item)
-	if not index then
-		error("failed to locate item in table")
-	end
-	tremove(tbl, index)
-end
+local _deepcopy = Hermes._deepcopy
+local _tableIndex = Hermes._tableIndex
+local _deleteIndexedTable = Hermes._deleteIndexedTable
 
 local function _rotateTexture(self, angle)
 	local function GetCorner(angle)
@@ -105,13 +75,11 @@ local function _secondsToClock(sSeconds)
 			local nHours = floor(nSeconds / 3600)
 			local nMins = floor(nSeconds / 60 - (nHours * 60))
 			local nSecs = floor(nSeconds - nHours * 3600 - nMins * 60)
-			--return ("%02.f:%02.f:%02.f"):format(nHours, nMins, nSecs)
 			return nHours, nMins, nSecs
 		else
 			--minutes
 			local nMins = floor(nSeconds / 60)
 			local nSecs = floor(nSeconds - nMins * 60)
-			--return ("%02.f:%02.f"):format(nMins, nSecs)
 			return nil, nMins, nSecs
 		end
 	end
@@ -329,7 +297,7 @@ function mod:FetchFrame(profile)
 	local frame
 	if (#FRAMEPOOL.Frames > 0) then
 		frame = FRAMEPOOL.Frames[1]
-		_deleteFromIndexedTable(FRAMEPOOL.Frames, frame)
+		_deleteIndexedTable(FRAMEPOOL.Frames, frame)
 	else
 		frame = self:CreateFrame()
 	end
@@ -712,7 +680,7 @@ function mod:RecycleCell(frame, cell, ismerged)
 	end
 
 	if not ismerged then
-		_deleteFromIndexedTable(frame.cells, cell)
+		_deleteIndexedTable(frame.cells, cell)
 	end
 
 	tinsert(CELLPOOL.Cells, cell)
@@ -752,7 +720,7 @@ function mod:FetchCell()
 	local cell
 	if (#CELLPOOL.Cells > 0) then
 		cell = CELLPOOL.Cells[1]
-		_deleteFromIndexedTable(CELLPOOL.Cells, cell)
+		_deleteIndexedTable(CELLPOOL.Cells, cell)
 	else
 		cell = self:CreateCell()
 	end
@@ -825,8 +793,8 @@ end
 
 function mod:SortCells(frame)
 	sort(frame.cells, function(a, b)
-		local ia = _findTableIndex(frame.view.abilities, a.ability)
-		local ib = _findTableIndex(frame.view.abilities, b.ability)
+		local ia = _tableIndex(frame.view.abilities, a.ability)
+		local ib = _tableIndex(frame.view.abilities, b.ability)
 		return ia < ib
 	end)
 end
@@ -1032,7 +1000,7 @@ function mod:ReleaseExtraBars(cell) -- recursive function that removes unneeded 
 
 	if deletedBar then
 		self:ReleaseBar(deletedBar)
-		_deleteFromIndexedTable(cell.bars, deletedBar)
+		_deleteIndexedTable(cell.bars, deletedBar)
 		self:SortBars(cell)
 		self:PositionSpellBars(cell)
 		self:ReleaseExtraBars(cell)
@@ -1058,14 +1026,14 @@ function mod:SortBars(cell)
 				--this is the merged cell, sort by "all" instances
 				local instancesA = cell.frame.view.instances["all"]
 				local instancesB = cell.frame.view.instances["all"]
-				local ia = _findTableIndex(instancesA, a.instance)
-				local ib = _findTableIndex(instancesB, b.instance)
+				local ia = _tableIndex(instancesA, a.instance)
+				local ib = _tableIndex(instancesB, b.instance)
 				return ia < ib
 			else
 				local instancesA = cell.frame.view.instances[a.instance.ability]
 				local instancesB = cell.frame.view.instances[b.instance.ability]
-				local ia = _findTableIndex(instancesA, a.instance)
-				local ib = _findTableIndex(instancesB, b.instance)
+				local ia = _tableIndex(instancesA, a.instance)
+				local ib = _tableIndex(instancesB, b.instance)
 				return ia < ib
 			end
 		end
@@ -1078,15 +1046,22 @@ end
 function mod:GetSpellBarNameText(bar)
 	local profile = bar.cell.frame.profile
 
-	if profile.barShowPlayerName == true and profile.barShowSpellName == true then
-		return bar.instance.sender.name .. "-" .. bar.instance.ability.name
+	local text = ""
+
+	if profile.barShowPlayerName == true and profile.barShowTargetName == true then
+		text = bar.instance.sender.name
+		if bar.instance.target then
+			text = text .. " > " .. Hermes:GetClassColorString(bar.instance.target, bar.instance.targetClass)
+		end
+	elseif profile.barShowPlayerName == true and profile.barShowSpellName == true then
+		text = bar.instance.sender.name .. " - " .. bar.instance.ability.name
 	elseif profile.barShowPlayerName == true and profile.barShowSpellName == false then
-		return bar.instance.sender.name
+		text = bar.instance.sender.name
 	elseif profile.barShowPlayerName == false and profile.barShowSpellName == true then
-		return bar.instance.ability.name
-	else
-		return ""
+		text = bar.instance.ability.name
 	end
+
+	return text
 end
 
 function mod:SetSpellBarStyle(bar)
@@ -1096,30 +1071,23 @@ function mod:SetSpellBarStyle(bar)
 	if not instance or (available == false and profile.hideNoAvailSender == true) then
 		self:SetSpellBarStyleEmpty(bar)
 		bar:Hide()
-		return
-	end
-
-	if available == true and cooldown == false then
+	elseif available == true and cooldown == false then
 		self:SetSpellBarStyleAvailable(bar)
 		if profile.hideNoCooldown == true and not bar.instance.remaining then
 			bar:Hide()
 		else
 			bar:Show()
 		end
-		return
-	end
-
-	if available == true and cooldown == true then
+	elseif available == true and cooldown == true then
 		self:SetSpellBarStyleOnCooldown(bar)
 		bar:Show()
-		return
-	end
-
-	self:SetSpellBarStyleUnavailable(bar)
-	if profile.hideNoCooldown == true and not bar.instance.remaining then
-		bar:Hide()
 	else
-		bar:Show()
+		self:SetSpellBarStyleUnavailable(bar)
+		if profile.hideNoCooldown == true and not bar.instance.remaining then
+			bar:Hide()
+		else
+			bar:Show()
+		end
 	end
 end
 
@@ -1438,50 +1406,42 @@ function mod:RefreshTooltip()
 		local ability = cell.ability
 		local instances = cell.frame.view.instances[ability]
 
-		local spellLine = ToolTip:AddLine("", "", "", "", "")
+		local spellLine = ToolTip:AddLine("", "", "", "", "", "")
 		ToolTip:SetCell(spellLine, 1, ability.name, nil, "LEFT", nil, nil, 1, nil, 130)
-		ToolTip:SetCell(spellLine, 5, tostring(Hermes:AbilityIdToBlizzId(ability.id)), SpellIdFont, "RIGHT", nil, nil, nil, 1)
+		ToolTip:SetCell(spellLine, 6, tostring(Hermes:AbilityIdToBlizzId(ability.id)), SpellIdFont, "RIGHT", nil, nil, nil, 1)
 		ToolTip:SetLineColor(spellLine, 1, 1, 1, 0.4)
 
 		if (#instances == 0) then
 			ToolTip:AddSeparator(1)
-			local line = ToolTip:AddLine("", "", "", "", "")
-			ToolTip:SetCell(line, 1, L["None found"], nil, "LEFT", 5) --set the id
+			local line = ToolTip:AddLine("", "", "", "", "", "")
+			ToolTip:SetCell(line, 1, L["None found"], nil, "LEFT", 6) --set the id
 		else
-			ToolTip:AddLine(" ", L["Time"], L["Alive"], L["Conn"], L["Range"])
+			ToolTip:AddLine(" ", L["Time"], L["Alive"], L["Conn"], L["Range"], L["Target"])
 
 			ToolTip:AddSeparator(1)
 
 			for _, instance in ipairs(instances) do
 				local sender = instance.sender
 
-				--available, playername, duration, alive, visibility, online
-				-- local iconAvailable
-				-- if not instance.remaining and sender.dead == false and sender.online == true and sender.visible then
-				-- 	iconAvailable = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
-				-- else
-				-- 	iconAvailable = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
-				-- end
-
 				local iconDead
 				if (sender.dead) then
-					iconDead = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+					iconDead = format(ICON_TEX, ICON_STATUS_NOTREADY)
 				else
-					iconDead = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+					iconDead = format(ICON_TEX, ICON_STATUS_READY)
 				end
 
 				local iconOnline
 				if (sender.online == true) then
-					iconOnline = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+					iconOnline = format(ICON_TEX, ICON_STATUS_READY)
 				else
-					iconOnline = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+					iconOnline = format(ICON_TEX, ICON_STATUS_NOTREADY)
 				end
 
 				local iconRange
 				if sender.visible then
-					iconRange = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+					iconRange = format(ICON_TEX, ICON_STATUS_READY)
 				else
-					iconRange = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+					iconRange = format(ICON_TEX, ICON_STATUS_NOTREADY)
 				end
 
 				local h, m, s = _secondsToClock(instance.remaining)
@@ -1513,8 +1473,12 @@ function mod:RefreshTooltip()
 					durationText = "|cFFFF0000" .. timeLeft .. "|r" --red
 				end
 
-				local line = ToolTip:AddLine(
-					Hermes:GetClassColorString(sender.name, sender.class), " " .. durationText, " " .. iconDead, " " .. iconOnline, " " .. iconRange)
+				local target = L["None"]
+				if instance.target then
+					target = Hermes:GetClassColorString(instance.target, instance.targetClass)
+				end
+
+				ToolTip:AddLine(Hermes:GetClassColorString(sender.name, sender.class), durationText, iconDead, iconOnline, iconRange, target)
 			end
 		end
 
@@ -1532,50 +1496,42 @@ function mod:RefreshTooltipMerged()
 	local cell = ToolTip.cell
 	local instances = cell.frame.view.instances["all"]
 
-	local spellLine = ToolTip:AddLine("", "", "", "", "")
+	local spellLine = ToolTip:AddLine("", "", "", "", "", "")
 	ToolTip:SetCell(spellLine, 1, cell.frame.view.name, nil, "LEFT", nil, nil, 1, nil, 130, nil)
-	ToolTip:SetCell(spellLine, 5, "", SpellIdFont, "RIGHT", nil, nil, nil, 1, nil, nil)
+	ToolTip:SetCell(spellLine, 6, "", SpellIdFont, "RIGHT", nil, nil, nil, 1, nil, nil)
 	ToolTip:SetLineColor(spellLine, 1, 1, 1, 0.4)
 
 	if (not instances or #instances == 0) then
 		ToolTip:AddSeparator(1)
 		local line = ToolTip:AddLine("", "", "", "", "")
-		ToolTip:SetCell(line, 1, L["None found"], nil, "LEFT", 5) --set the id
+		ToolTip:SetCell(line, 1, L["None found"], nil, "LEFT", 6) --set the id
 	else
-		ToolTip:AddLine(" ", L["Time"], L["Alive"], L["Conn"], L["Range"])
+		ToolTip:AddLine(" ", L["Time"], L["Alive"], L["Conn"], L["Range"], L["Target"])
 
 		ToolTip:AddSeparator(1)
 
 		for _, instance in ipairs(instances) do
 			local sender = instance.sender
 
-			--available, playername, duration, alive, visibility, online
-			-- local iconAvailable
-			-- if not instance.remaining and sender.dead == false and sender.online == true and sender.visible then
-			-- 	iconAvailable = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
-			-- else
-			-- 	iconAvailable = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
-			-- end
-
 			local iconDead
 			if (sender.dead) then
-				iconDead = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+				iconDead = format(ICON_TEX, ICON_STATUS_NOTREADY)
 			else
-				iconDead = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+				iconDead = format(ICON_TEX, ICON_STATUS_READY)
 			end
 
 			local iconOnline
 			if (sender.online == true) then
-				iconOnline = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+				iconOnline = format(ICON_TEX, ICON_STATUS_READY)
 			else
-				iconOnline = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+				iconOnline = format(ICON_TEX, ICON_STATUS_NOTREADY)
 			end
 
 			local iconRange
 			if sender.visible then
-				iconRange = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+				iconRange = format(ICON_TEX, ICON_STATUS_READY)
 			else
-				iconRange = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+				iconRange = format(ICON_TEX, ICON_STATUS_NOTREADY)
 			end
 
 			local h, m, s = _secondsToClock(instance.remaining)
@@ -1607,20 +1563,20 @@ function mod:RefreshTooltipMerged()
 				durationText = "|cFFFF0000" .. timeLeft .. "|r" --red
 			end
 
-			local line = ToolTip:AddLine(
-				"|T" .. instance.ability.icon .. ":0:0:0:0|t " .. Hermes:GetClassColorString(sender.name, sender.class),
-				" " .. durationText,
-				" " .. iconDead,
-				" " .. iconOnline,
-				" " .. iconRange
-			)
+			local target = L["None"]
+			if instance.target then
+				target = Hermes:GetClassColorString(instance.target, instance.targetClass)
+			end
+
+			local iconName = format(ICON_TEX_STR, instance.ability.icon, Hermes:GetClassColorString(sender.name, sender.class))
+			ToolTip:AddLine(iconName, durationText, iconDead, iconOnline, iconRange, target)
 		end
 	end
 end
 
 function mod:ShowTooltip(cell, anchor)
 	if ToolTip == nil then
-		ToolTip = QTip:Acquire("ViewManager" .. VIEW_NAME .. "Tooltip", 5, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
+		ToolTip = QTip:Acquire("ViewManager" .. VIEW_NAME .. "Tooltip", 6, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
 		ToolTip:ClearAllPoints()
 		ToolTip:SmartAnchorTo(anchor)
 		ToolTip.cell = cell
@@ -1711,6 +1667,7 @@ function mod:GetViewDefaults() --REQUIRED
 		barCooldownDirection = "right",
 		--------------
 		barShowPlayerName = true,
+		barShowTargetName = false,
 		barShowSpellName = false,
 		barShowTime = true,
 		--------------
@@ -2149,6 +2106,21 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 					type = "group",
 					inline = false,
 					order = 5,
+					get = function(info)
+						return profile[info[#info]]
+					end,
+					set = function(info, value)
+						profile[info[#info]] = value
+						for _, cell in ipairs(frame.cells) do
+							for _, bar in ipairs(cell.bars) do
+								self:SetSpellBarStyle(bar)
+							end
+						end
+						--handle mergedcell
+						for _, bar in ipairs(frame.mergedcell.bars) do
+							self:SetSpellBarStyle(bar)
+						end
+					end,
 					args = {
 						barShowPlayerName = {
 							type = "toggle",
@@ -2157,19 +2129,16 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barShowPlayerName
 							end,
-							order = 5,
-							set = function(info, value)
-								profile.barShowPlayerName = value
-								for _, cell in ipairs(frame.cells) do
-									for _, bar in ipairs(cell.bars) do
-										self:SetSpellBarStyle(bar)
-									end
-								end
-								--handle mergedcell
-								for _, bar in ipairs(frame.mergedcell.bars) do
-									self:SetSpellBarStyle(bar)
-								end
-							end
+							order = 5
+						},
+						barShowTargetName = {
+							type = "toggle",
+							name = L["Show Target Name"],
+							width = "full",
+							get = function(info)
+								return profile.barShowTargetName
+							end,
+							order = 10
 						},
 						barShowSpellName = {
 							type = "toggle",
@@ -2178,19 +2147,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barShowSpellName
 							end,
-							order = 10,
-							set = function(info, value)
-								profile.barShowSpellName = value
-								for _, cell in ipairs(frame.cells) do
-									for _, bar in ipairs(cell.bars) do
-										self:SetSpellBarStyle(bar)
-									end
-								end
-								--handle mergedcell
-								for _, bar in ipairs(frame.mergedcell.bars) do
-									self:SetSpellBarStyle(bar)
-								end
-							end
+							order = 15
 						},
 						barShowTime = {
 							type = "toggle",
@@ -2199,19 +2156,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barShowTime
 							end,
-							order = 15,
-							set = function(info, value)
-								profile.barShowTime = value
-								for _, cell in ipairs(frame.cells) do
-									for _, bar in ipairs(cell.bars) do
-										self:SetSpellBarStyle(bar)
-									end
-								end
-								--handle mergedcell
-								for _, bar in ipairs(frame.mergedcell.bars) do
-									self:SetSpellBarStyle(bar)
-								end
-							end
+							order = 20
 						},
 						barTextSide = {
 							type = "toggle",
@@ -2220,7 +2165,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barTextSide == "right"
 							end,
-							order = 20,
+							order = 25,
 							set = function(info, value)
 								if value == true then
 									profile.barTextSide = "right"
@@ -2254,7 +2199,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 									return profile.barIcon
 								end
 							end,
-							order = 25,
+							order = 30,
 							style = "dropdown",
 							set = function(info, value)
 								if profile.merged then
@@ -2280,7 +2225,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 						barCooldownStyle = {
 							type = "select",
 							name = L["Cooldown Style"],
-							order = 30,
+							order = 35,
 							style = "dropdown",
 							width = "full",
 							get = function(info)
@@ -2311,7 +2256,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barCooldownDirection == "left"
 							end,
-							order = 35,
+							order = 40,
 							set = function(info, value)
 								if value == true then
 									profile.barCooldownDirection = "left"
@@ -3921,6 +3866,14 @@ end
 
 function mod:OnInstanceStopCooldown(view, ability, instance) --OPTIONAL
 	local frame = view.frame
+
+	------------------------------------------
+	--remove target
+	------------------------------------------
+	if instance.target then
+		instance.target = nil
+		instance.targetClass = nil
+	end
 
 	------------------------------------------
 	--handle the merged cell

@@ -17,8 +17,10 @@ local GetNumGroupMembers = API.GetNumGroupMembers
 local GetNumSubgroupMembers = API.GetNumSubgroupMembers
 local IsInRaid = API.IsInRaid
 local new, del = API.TablePool()
+Hermes.newTable, Hermes.delTable = new, del
 local _
 
+local UnitName, UnitClass, UnitGUID = UnitName, UnitClass, UnitGUID
 Hermes.HERMES_VERSION_STRING = HERMES_VERSION_STRING
 Hermes.Name = UnitName("player")
 Hermes.Class = select(2, UnitClass("player"))
@@ -365,14 +367,20 @@ local function _tableIndex(tbl, item)
 
 	return nil
 end
+Hermes._tableIndex = _tableIndex
 
-local function _deleteIndexedTable(tbl, item)
+local function _deleteIndexedTable(tbl, item, weaktable)
 	local index = _tableIndex(tbl, item)
 	if not index then
 		error("failed to locate item in table")
 	end
-	tremove(tbl, index)
+	if weaktable then
+		del(tremove(tbl, index))
+	else
+		tremove(tbl, index)
+	end
 end
+Hermes._deleteIndexedTable = _deleteIndexedTable
 
 local function _deepcopy(object)
 	local lookup_table = new()
@@ -392,6 +400,7 @@ local function _deepcopy(object)
 	del(lookup_table)
 	return _copy(object)
 end
+Hermes._deepcopy = _deepcopy
 
 local function _tableCount(tbl)
 	local cnt = 0
@@ -599,7 +608,7 @@ function Hermes:GetSpecializationNameFromId(id)
 end
 
 function Hermes:GetClassColorString(text, class)
-	return "|c" .. Hermes:GetClassColorHEX(class) .. text .. "|r"
+	return class and ("|c" .. Hermes:GetClassColorHEX(class) .. text .. "|r") or text
 end
 
 function Hermes:AbilityIdToBlizzId(id)
@@ -785,7 +794,6 @@ end
 -- but once see the first one we fire the virtual instance, and we don't fire any more until we get a different spell id.
 local _lastSpell = nil
 local _lastPlayer = nil
-local _lastTarget = nil
 
 local function ConvertSpellIdIfSoulstone(spellID)
 	if spellID == SPELLID_SOULSTONERESURRECTION or spellID == SPELLID_SOULSTONERESURRECTION_WHENDEAD then
@@ -812,7 +820,7 @@ function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared, dstName)
 			local duration = player.spellcache[spellID]
 			if duration then
 				--update the cooldowns table for the player and ability
-				core:SetPlayerCooldown(player, spellID, duration, dstName)
+				core:SetPlayerCooldown(player, spellID, duration)
 
 				local sender = core:FindSenderByName(srcName)
 				local ability = core:FindTrackedAbilityById(spellID)
@@ -820,25 +828,22 @@ function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared, dstName)
 				if sender and sender.virtual and core:CanCreateVirtualInstance(ability) then
 					--prevent from adding the same spell for the same player more than once
 					if _lastSpell ~= spellID or _lastPlayer ~= srcName then
-						core:AddVirtualInstance(player.name, player.class, spellID, duration)
+						core:AddVirtualInstance(player.name, player.class, spellID, duration, nil, dstName)
 					end
 
 					--store the last spell and player captured
 					if not shared then
 						_lastSpell = spellID
 						_lastPlayer = srcName
-						_lastTarget = dstName
 					end
 				end
 			else
 				_lastSpell = nil
 				_lastPlayer = nil
-				_lastTarget = nil
 			end
 		else
 			_lastSpell = nil
 			_lastPlayer = nil
-			_lastTarget = nil
 		end
 	end
 
@@ -847,7 +852,7 @@ function core:ProcessCombatLogSpell(spellID, srcGUID, srcName, shared, dstName)
 		--look for any shared cooldowns and add that if necessary too
 		local sharedId = SHARED_COOLDOWNS[spellID]
 		if sharedId then
-			core:ProcessCombatLogSpell(sharedId, srcGUID, srcName, true)
+			core:ProcessCombatLogSpell(sharedId, srcGUID, srcName, true, dstName)
 		end
 	end
 end
@@ -856,14 +861,12 @@ function core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID, dstName)
 	if event ~= "SPELL_RESURRECT" and event ~= "SPELL_CAST_SUCCESS" and event ~= "SPELL_AURA_APPLIED" then
 		_lastSpell = nil
 		_lastPlayer = nil
-		_lastTarget = nil
 		return
 	end
 	--ignore weird stuff that we don't know can happen or not
 	if not srcName or not spellID or not srcGUID then
 		_lastSpell = nil
 		_lastPlayer = nil
-		_lastTarget = nil
 		return
 	end
 
@@ -883,7 +886,6 @@ function core:ProcessCombatLogEvent(event, srcGUID, srcName, spellID, dstName)
 	-- if (srcName == Player.name) then
 	-- 	_lastSpell = nil
 	-- 	_lastPlayer = nil
-	-- 	_lastTarget = nil
 	-- 	return
 	-- end
 
@@ -2336,18 +2338,16 @@ function core:FindSenderByName(name)
 end
 
 function core:AddSender(name, class, virtual, info)
-	local sender = {
-		guid = info.guid,
-		name = name,
-		class = class,
-		online = true, --assume online
-		dead = false, --assume alive
-		created = GetTime(), --tracks the time the sender was first created
-		virtual = virtual, --tracks if external sender
-		visible = nil,
-		info = info
-	}
-
+	local sender = new()
+	sender.guid = info.guid
+	sender.name = name
+	sender.class = class
+	sender.online = true --assume online
+	sender.dead = false --assume alive
+	sender.created = GetTime() --tracks the time the sender was first created
+	sender.virtual = virtual --tracks if external sender
+	sender.visible = nil
+	sender.info = info
 	tinsert(Senders, sender)
 
 	--update sender but do not allow events to be sent
@@ -2365,7 +2365,7 @@ function core:RemoveSender(sender)
 	core:FireEvent("OnSenderRemoved", sender)
 
 	--now delete from table
-	_deleteIndexedTable(Senders, sender)
+	_deleteIndexedTable(Senders, sender, true)
 end
 
 function core:StopSenderStatusTimer()
@@ -2561,21 +2561,15 @@ function core:StartTrackingAbility(dbability, nosend) --message will only be sen
 		error("null ability")
 	end
 
-	--tinsert(Abilities, ability)
-	--call events
-	--core:FireEvent("OnAbilityAdded", ability)
-
 	--if receiving, then request update from senders and also look for virtual users
 	if Hermes:IsReceiving() == true then
-		local ability = {
-			id = dbability.id,
-			name = dbability.name,
-			class = dbability.class,
-			icon = dbability.icon,
-			dbp = dbability,
-			created = GetTime() --track when this ability was created
-		}
-
+		local ability = new()
+		ability.id = dbability.id
+		ability.name = dbability.name
+		ability.class = dbability.class
+		ability.icon = dbability.icon
+		ability.dbp = dbability
+		ability.created = GetTime() --track when this ability was created
 		tinsert(Abilities, ability)
 		core:FireEvent("OnAbilityAdded", ability)
 
@@ -2607,7 +2601,7 @@ function core:StopTrackingAbility(dbability)
 		core:FireEvent("OnAbilityRemoved", ability)
 
 		--now delete from table
-		_deleteIndexedTable(Abilities, ability)
+		_deleteIndexedTable(Abilities, ability, true)
 	end
 end
 
@@ -2770,9 +2764,7 @@ local function OnAbilityInstanceFrameUpdate(frame, elapsed)
 		_keepRunning = false
 		frame.LastScan = frame.LastScan - SCAN_FREQUENCY
 		for _, instance in ipairs(AbilityInstances) do
-			if not instance.remaining then
-				--do nothing, it's not on cooldown
-			else
+			if instance.remaining then
 				--update remaining time
 				instance.remaining = instance.initialDuration - (GetTime() - instance.initialTimeStamp)
 
@@ -2825,7 +2817,7 @@ function core:RemoveAllAbilityInstances()
 	end
 end
 
-function core:AddVirtualInstance(senderName, class, spellid, duration, shared)
+function core:AddVirtualInstance(senderName, class, spellid, duration, shared, target)
 	local ability = nil
 	for _, a in ipairs(Abilities) do
 		if a.id == spellid and (a.class == class or a.class == "ANY") then
@@ -2841,7 +2833,7 @@ function core:AddVirtualInstance(senderName, class, spellid, duration, shared)
 		local sender = core:FindSenderByName(senderName)
 		--only support virtual senders
 		if sender and sender.virtual then
-			core:SetAbilityInstance(ability, sender, duration)
+			core:SetAbilityInstance(ability, sender, duration, target)
 		end
 	end
 
@@ -2849,12 +2841,12 @@ function core:AddVirtualInstance(senderName, class, spellid, duration, shared)
 		--look for any shared cooldowns and add that if necessary too
 		local sharedId = SHARED_COOLDOWNS[spellid]
 		if sharedId then
-			core:AddVirtualInstance(senderName, class, sharedId, duration, true)
+			core:AddVirtualInstance(senderName, class, sharedId, duration, true, target)
 		end
 	end
 end
 
-function core:SetAbilityInstance(ability, sender, duration)
+function core:SetAbilityInstance(ability, sender, duration, target)
 	--first see if one already exists
 	local instance = core:FindAbilityInstance(ability, sender)
 	local timeStamp = nil
@@ -2866,14 +2858,19 @@ function core:SetAbilityInstance(ability, sender, duration)
 
 	if not instance then
 		--new instance, set it as though it's available initially, if it's not, another message will be sent with appropriate data
-		instance = {
-			ability = ability,
-			sender = sender,
-			initialDuration = nil,
-			initialTimeStamp = nil,
-			remaining = nil,
-			created = GetTime() --remember when the instance was created
-		}
+		instance = new()
+		instance.ability = ability
+		instance.sender = sender
+		instance.initialDuration = nil
+		instance.initialTimeStamp = nil
+		instance.remaining = nil
+		instance.created = GetTime() --remember when the instance was created
+
+		-- add target and their class
+		if target and target ~= sender.name then
+			instance.target = target
+			_, instance.targetClass = UnitClass(target)
+		end
 
 		tinsert(AbilityInstances, instance)
 
@@ -2898,14 +2895,20 @@ function core:SetAbilityInstance(ability, sender, duration)
 		instance.initialTimeStamp = timeStamp
 		instance.remaining = duration
 
+		-- add target and their class
+		if target and target ~= sender.name then
+			instance.target = target
+			_, instance.targetClass = UnitClass(target)
+		elseif instance.target then
+			instance.target = nil
+			instance.targetClass = nil
+		end
+
 		--if it's on cooldown, then possibly start it
 		if duration then
 			--only start it if it wasn't on cooldown preivously, or if the difference in the previous cooldown value and the new one is greater than the specified threshold.
 			--this helps cleanup events that can fire due to the Hermes handshaking that goes on
-			if
-				not lastRemaining or
-					(lastRemaining and abs(lastRemaining - duration) > DELTA_THRESHOLD_FOR_REMAINING_CHANGE)
-			 then
+			if not lastRemaining or (lastRemaining and abs(lastRemaining - duration) > DELTA_THRESHOLD_FOR_REMAINING_CHANGE) then
 				core:FireEvent("OnAbilityAvailableSendersChanged", instance.ability) -- ADDED
 				core:FireEvent("OnAbilityInstanceStartCooldown", instance)
 			end
@@ -2937,7 +2940,7 @@ end
 
 function core:RemoveAbilityInstance(instance)
 	--now delete from table
-	_deleteIndexedTable(AbilityInstances, instance)
+	_deleteIndexedTable(AbilityInstances, instance, true)
 	--call the events AFTER we removed the values, otherwise calls such as GetAbilityStats will return an incorrect number of senders
 	core:FireEvent("OnAbilityAvailableSendersChanged", instance.ability) -- ADDED
 	core:FireEvent("OnAbilityTotalSendersChanged", instance.ability) -- ADDED
@@ -3084,7 +3087,7 @@ function core:GetPlayerCooldown(player, id)
 	return nil
 end
 
-function core:SetPlayerCooldown(player, id, duration, target)
+function core:SetPlayerCooldown(player, id, duration)
 	local guid = core:GetKeyForTable(Players, player) --find the guid of the player
 	local cd = dbg.cooldowns[guid]
 
@@ -3106,12 +3109,6 @@ function core:SetPlayerCooldown(player, id, duration, target)
 		cd[id] = new()
 		cd[id][1] = GetTime()
 		cd[id][2] = duration
-
-		if target and target ~= player.name then
-			local _, class = UnitClass(target)
-			target = class and Hermes:GetClassColorString(target, class) or target
-			cd[id][3] = target
-		end
 	end
 end
 

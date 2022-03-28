@@ -1,7 +1,6 @@
 local L = LibStub("AceLocale-3.0"):NewLocale("Hermes-UI", "zhTW")
 if not L then return end
 
-L["Add"] = "加入" -- Needs review
 L["Alive"] = "存活" -- Needs review
 -- L["Anchor Point"] = "Anchor Point"
 -- L["Available Bar Color"] = "Available Bar Color"
@@ -41,7 +40,6 @@ L["Left to Right"] = "左到右" -- Needs review
 -- L["Lock Window"] = "Lock Window"
 -- L["Merge Spells"] = "Merge Spells"
 -- L["Name on Right"] = "Name on Right"
--- L["None"] = "None"
 L["None found"] = "沒有找到" -- Needs review
 -- L["On Cooldown Bar Color"] = "On Cooldown Bar Color"
 -- L["On Cooldown Font Color"] = "On Cooldown Font Color"
@@ -50,7 +48,6 @@ L["None found"] = "沒有找到" -- Needs review
 L["Padding"] = "填充" -- Needs review
 -- L["Player/Duration Width Ratio (%)"] = "Player/Duration Width Ratio (%)"
 -- L["Range"] = "Range"
--- L["Ready"] = "Ready"
 -- L["Requires spell metadata key duration. If such a key exists, an additional timer bar will be displayed based on it's value. For example. you could supply a duration key with a value of 6 for Divine Guardian's 6 second duration."] = "Requires spell metadata key duration. If such a key exists, an additional timer bar will be displayed based on it's value. For example. you could supply a duration key with a value of 6 for Divine Guardian's 6 second duration."
 L["Reset Position"] = "重設位置" -- Needs review
 -- L["Reverse Direction"] = "Reverse Direction"
@@ -111,6 +108,7 @@ L["Width"] = "寬度" -- Needs review
 -- L["Raid Groups"] = "Raid Groups"
 -- L["Show Label"] = "Show Label"
 -- L["Show Player Name"] = "Show Player Name"
+-- L["Show Target Name"] = "Show Target Name"
 -- L["Show Slider"] = "Show Slider"
 -- L["Show Spell Name"] = "Show Spell Name"
 -- L["Show Time"] = "Show Time"

@@ -1,7 +1,7 @@
 local L = LibStub("AceLocale-3.0"):NewLocale("Hermes", "enUS", true)
 if not L then return end
 
-L["Add"] = true
+L["Add"] = ADD
 L["Alive"] = true
 L["Anchor Point"] = true
 L["Available Bar Color"] = true
@@ -41,7 +41,7 @@ L["Left to Right"] = true
 L["Lock Window"] = true
 L["Merge Spells"] = true
 L["Name on Right"] = true
-L["None"] = true
+L["None"] = NONE
 L["None found"] = true
 L["On Cooldown Bar Color"] = true
 L["On Cooldown Font Color"] = true
@@ -50,7 +50,8 @@ L["Outline"] = true
 L["Padding"] = true
 L["Player/Duration Width Ratio (%)"] = true
 L["Range"] = true
-L["Ready"] = true
+L["Target"] = STATUS_TEXT_TARGET
+L["Ready"] = READY
 L["Requires spell metadata key duration. If such a key exists, an additional timer bar will be displayed based on it's value. For example. you could supply a duration key with a value of 6 for Divine Guardian's 6 second duration."] = true
 L["Reset Position"] = true
 L["Reverse Direction"] = true

@@ -20,6 +20,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("Hermes-UI")
 local API = Hermes.Compat
 local GetNumGroupMembers = API.GetNumGroupMembers
 local GetNumSubgroupMembers = API.GetNumSubgroupMembers
+local new, del = Hermes.newTable, Hermes.delTable
 
 local VIEWS = {}
 local VIEW_MODULES = {}
@@ -50,41 +51,9 @@ local EMPTY_ARG = {
 ------------------------------------------------------------
 -- HELPERS
 ------------------------------------------------------------
-local function _deepcopy(object)
-	local lookup_table = {}
-	local function _copy(object)
-		if type(object) ~= "table" then
-			return object
-		elseif lookup_table[object] then
-			return lookup_table[object]
-		end
-		local new_table = {}
-		lookup_table[object] = new_table
-		for index, value in pairs(object) do
-			new_table[_copy(index)] = _copy(value)
-		end
-		return setmetatable(new_table, getmetatable(object))
-	end
-	return _copy(object)
-end
-
-local function _findTableIndex(tbl, item)
-	for index, i in ipairs(tbl) do
-		if (i == item) then
-			return index
-		end
-	end
-
-	return nil
-end
-
-local function _deleteFromIndexedTable(tbl, item)
-	local index = _findTableIndex(tbl, item)
-	if not index then
-		error("failed to locate item in table")
-	end
-	tremove(tbl, index)
-end
+local _deepcopy = Hermes._deepcopy
+local _tableIndex = Hermes._tableIndex
+local _deleteIndexedTable = Hermes._deleteIndexedTable
 
 local function _wipeOnUpdateCache()
 	wipe(ONINSTANCE_UPDATE_CACHE)
@@ -108,7 +77,7 @@ function mod:SynchronizeViewWithInventory(view)
 	if view then
 		local profile = VIEW_PROFILES[view]
 		--remove abilities no longer in Hermes inventory
-		local removed = {}
+		local removed = new()
 		for key, ability in ipairs(profile.abilities) do
 			if HERMES_INVENTORY[ability.id] == nil then
 				tinsert(removed, ability)
@@ -116,10 +85,10 @@ function mod:SynchronizeViewWithInventory(view)
 		end
 
 		for _, ability in ipairs(removed) do
-			_deleteFromIndexedTable(profile.abilities, ability)
+			_deleteIndexedTable(profile.abilities, ability)
 		end
 
-		wipe(removed)
+		del(removed)
 
 		--now add enabled items that aren't already in the list
 		for id, enabled in pairs(HERMES_INVENTORY) do
@@ -445,7 +414,7 @@ function mod:ReleaseView(view)
 	VIEW_PROFILES[view] = nil
 	VIEW_SENDERS[view] = nil
 
-	_deleteFromIndexedTable(VIEWS, view)
+	_deleteIndexedTable(VIEWS, view)
 	if view.instances["all"] then
 		wipe(view.instances["all"])
 	end
@@ -523,7 +492,7 @@ function mod:InsertHermesInstance(instance)
 end
 
 function mod:RemoveHermesInstance(instance) --should I clear cache here?
-	_deleteFromIndexedTable(HERMES_INSTANCES[instance.ability], instance)
+	_deleteIndexedTable(HERMES_INSTANCES[instance.ability], instance)
 	_wipeOnUpdateCache()
 end
 
@@ -664,7 +633,6 @@ function mod:UpdatePlayerData(player)
 		if player then
 			local playerName = UnitName("player")
 			local combinedRealmName = playerName .. "-" .. GetRealmName()
-			-- print(player.name, combinedRealmName)
 			if player.name ~= combinedRealmName and player.name ~= playerName then
 				error("this was unexpected")
 			end
@@ -1129,7 +1097,7 @@ function mod:RemoveAbilityFromView(view, ability)
 	end
 
 	--delete ability and instances
-	local index = _findTableIndex(view.abilities, ability) --find the index
+	local index = _tableIndex(view.abilities, ability) --find the index
 	view.instances[view.abilities[index]] = nil --delete the instance table
 	tremove(view.abilities, index) --delete the ability
 
@@ -1146,10 +1114,10 @@ function mod:RemoveInstanceFromView(view, ability, instance)
 	_wipeOnUpdateCache()
 
 	--delete instances
-	local index = _findTableIndex(view.instances[ability], instance) --find the index
+	local index = _tableIndex(view.instances[ability], instance) --find the index
 	tremove(view.instances[ability], index) --delete the instance
 
-	index = _findTableIndex(view.instances["all"], instance) --find the index
+	index = _tableIndex(view.instances["all"], instance) --find the index
 	tremove(view.instances["all"], index) --delete the instance
 
 	--notify view
@@ -1335,8 +1303,8 @@ local function SortInstancesBySpellOrder(view, a, b)
 	if a.ability == b.ability then
 		return SortInstancesByPlayerName(view, a, b)
 	else
-		local iA, _ = _findTableIndex(view.abilities, a.ability)
-		local iB, _ = _findTableIndex(view.abilities, b.ability)
+		local iA, _ = _tableIndex(view.abilities, a.ability)
+		local iB, _ = _tableIndex(view.abilities, b.ability)
 		return iA < iB
 	end
 end
@@ -1845,12 +1813,7 @@ function mod:UpdateViewPlayerFiltersTable()
 				set = function(info, name)
 					tinsert(profile.playerfilters, name)
 					--sort it
-					sort(
-						profile.playerfilters,
-						function(a, b)
-							return a < b
-						end
-					)
+					sort(profile.playerfilters, function(a, b) return a < b end)
 
 					if Hermes:IsReceiving() == true then
 						--find the sender we just added
@@ -1882,7 +1845,7 @@ function mod:UpdateViewPlayerFiltersTable()
 					return names
 				end,
 				set = function(info, name)
-					_deleteFromIndexedTable(profile.playerfilters, name)
+					_deleteIndexedTable(profile.playerfilters, name)
 					--there's really no guarantee that this sender even exists right now
 					if Hermes:IsReceiving() == true then
 						--find the sender we just removed, if possible
@@ -2102,9 +2065,7 @@ end
 local nameSelection = {}
 function mod:UpdateNameSelection()
 	--setup name selection table
-	if nameSelection then
-		wipe(nameSelection)
-	end
+	wipe(nameSelection)
 
 	for index, profile in ipairs(dbp.views) do
 		tinsert(nameSelection, profile.name)
@@ -2163,7 +2124,7 @@ function mod:UpdateOptionsTable()
 					if not SELECTED_VIEW.profile then
 						error("error")
 					end
-					return _findTableIndex(nameSelection, SELECTED_VIEW.profile.name)
+					return _tableIndex(nameSelection, SELECTED_VIEW.profile.name)
 				end
 			end,
 			values = function()
@@ -2206,7 +2167,7 @@ function mod:UpdateOptionsTable()
 						UI:BlizOptionsTable_ViewManager()
 					elseif index == #dbp.views + 2 then --copy
 						--generate a unique name for the container
-						local sourceDB = dbp.views[_findTableIndex(dbp.views, SELECTED_VIEW.profile)]
+						local sourceDB = dbp.views[_tableIndex(dbp.views, SELECTED_VIEW.profile)]
 						local name = self:GenerateUniqueViewName(sourceDB.name .. " ")
 
 						--clone defaults for the container

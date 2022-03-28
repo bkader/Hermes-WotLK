@@ -41,41 +41,9 @@ local NEW_INSTANCE_THRESHOLD = 1
 -----------------------------------------------------------------------
 -- HELPERS
 -----------------------------------------------------------------------
-local function _deepcopy(object)
-	local lookup_table = {}
-	local function _copy(object)
-		if type(object) ~= "table" then
-			return object
-		elseif lookup_table[object] then
-			return lookup_table[object]
-		end
-		local new_table = {}
-		lookup_table[object] = new_table
-		for index, value in pairs(object) do
-			new_table[_copy(index)] = _copy(value)
-		end
-		return setmetatable(new_table, getmetatable(object))
-	end
-	return _copy(object)
-end
-
-local function _findTableIndex(tbl, item)
-	for index, i in ipairs(tbl) do
-		if (i == item) then
-			return index
-		end
-	end
-
-	return nil
-end
-
-local function _deleteFromIndexedTable(tbl, item)
-	local index = _findTableIndex(tbl, item)
-	if not index then
-		error("failed to locate item in table")
-	end
-	tremove(tbl, index)
-end
+local _deepcopy = Hermes._deepcopy
+local _tableIndex = Hermes._tableIndex
+local _deleteIndexedTable = Hermes._deleteIndexedTable
 
 local function _rotateTexture(self, angle)
 	local function GetCorner(angle)
@@ -223,7 +191,7 @@ function mod:FetchFrame(profile)
 	local frame
 	if #FRAMEPOOL.Frames > 0 then
 		frame = FRAMEPOOL.Frames[1]
-		_deleteFromIndexedTable(FRAMEPOOL.Frames, frame)
+		_deleteIndexedTable(FRAMEPOOL.Frames, frame)
 	else
 		frame = self:CreateFrame()
 	end
@@ -449,7 +417,7 @@ function mod:RecycleCell(frame, cell, ismerged)
 	end
 
 	if not ismerged then
-		_deleteFromIndexedTable(frame.cells, cell)
+		_deleteIndexedTable(frame.cells, cell)
 	end
 
 	tinsert(CELLPOOL.Cells, cell)
@@ -486,7 +454,7 @@ function mod:FetchCell()
 	local cell
 	if #CELLPOOL.Cells > 0 then
 		cell = CELLPOOL.Cells[1]
-		_deleteFromIndexedTable(CELLPOOL.Cells, cell)
+		_deleteIndexedTable(CELLPOOL.Cells, cell)
 	else
 		cell = self:CreateCell()
 	end
@@ -535,8 +503,8 @@ end
 
 function mod:SortCells(frame)
 	sort(frame.cells, function(a, b)
-		local ia = _findTableIndex(frame.view.abilities, a.ability)
-		local ib = _findTableIndex(frame.view.abilities, b.ability)
+		local ia = _tableIndex(frame.view.abilities, a.ability)
+		local ib = _tableIndex(frame.view.abilities, b.ability)
 		return ia < ib
 	end)
 end
@@ -732,14 +700,14 @@ function mod:SortBars(cell)
 			-- this is the merged cell, sort by "all" instances
 			local instancesA = cell.frame.view.instances["all"]
 			local instancesB = cell.frame.view.instances["all"]
-			local ia = _findTableIndex(instancesA, a.instance)
-			local ib = _findTableIndex(instancesB, b.instance)
+			local ia = _tableIndex(instancesA, a.instance)
+			local ib = _tableIndex(instancesB, b.instance)
 			return ia < ib
 		else
 			local instancesA = cell.frame.view.instances[a.instance.ability]
 			local instancesB = cell.frame.view.instances[b.instance.ability]
-			local ia = _findTableIndex(instancesA, a.instance)
-			local ib = _findTableIndex(instancesB, b.instance)
+			local ia = _tableIndex(instancesA, a.instance)
+			local ib = _tableIndex(instancesB, b.instance)
 			return ia < ib
 		end
 	end)
@@ -751,15 +719,22 @@ end
 function mod:GetSpellBarNameText(bar)
 	local profile = bar.cell.frame.profile
 
-	if profile.barShowPlayerName == true and profile.barShowSpellName == true then
-		return bar.instance.sender.name .. "-" .. bar.instance.ability.name
+	local text = ""
+
+	if profile.barShowPlayerName == true and profile.barShowTargetName == true then
+		text = bar.instance.sender.name
+		if bar.instance.target then
+			text = text .. " > " .. Hermes:GetClassColorString(bar.instance.target, bar.instance.targetClass)
+		end
+	elseif profile.barShowPlayerName == true and profile.barShowSpellName == true then
+		text = bar.instance.sender.name .. " - " .. bar.instance.ability.name
 	elseif profile.barShowPlayerName == true and profile.barShowSpellName == false then
-		return bar.instance.sender.name
+		text = bar.instance.sender.name
 	elseif profile.barShowPlayerName == false and profile.barShowSpellName == true then
-		return bar.instance.ability.name
-	else
-		return ""
+		text = bar.instance.ability.name
 	end
+
+	return text
 end
 
 function mod:SetSpellBarStyle(bar)
@@ -768,15 +743,11 @@ function mod:SetSpellBarStyle(bar)
 
 	if available == true and cooldown == false then
 		self:SetSpellBarStyleAvailable(bar)
-		return
-	end
-
-	if available == true and cooldown == true then
+	elseif available == true and cooldown == true then
 		self:SetSpellBarStyleOnCooldown(bar)
-		return
+	else
+		self:SetSpellBarStyleUnavailable(bar)
 	end
-
-	self:SetSpellBarStyleUnavailable(bar)
 end
 
 function mod:SetSpellBarStyleAvailable(bar)
@@ -1093,6 +1064,7 @@ function mod:GetViewDefaults() --REQUIRED
 		barCooldownDirection = "right",
 		--------------
 		barShowPlayerName = true,
+		barShowTargetName = false,
 		barShowSpellName = false,
 		barShowTime = true,
 		--------------
@@ -1354,6 +1326,21 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 					type = "group",
 					inline = false,
 					order = 5,
+					get = function(info)
+						return profile[info[#info]]
+					end,
+					set = function(info, value)
+						profile[info[#info]] = value
+						for _, cell in ipairs(frame.cells) do
+							for _, bar in ipairs(cell.bars) do
+								self:SetSpellBarStyle(bar)
+							end
+						end
+						--handle mergedcell
+						for _, bar in ipairs(frame.mergedcell.bars) do
+							self:SetSpellBarStyle(bar)
+						end
+					end,
 					args = {
 						barShowPlayerName = {
 							type = "toggle",
@@ -1362,19 +1349,16 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barShowPlayerName
 							end,
-							order = 5,
-							set = function(info, value)
-								profile.barShowPlayerName = value
-								for _, cell in ipairs(frame.cells) do
-									for _, bar in ipairs(cell.bars) do
-										self:SetSpellBarStyle(bar)
-									end
-								end
-								--handle mergedcell
-								for _, bar in ipairs(frame.mergedcell.bars) do
-									self:SetSpellBarStyle(bar)
-								end
-							end
+							order = 5
+						},
+						barShowTargetName = {
+							type = "toggle",
+							name = L["Show Target Name"],
+							width = "full",
+							get = function(info)
+								return profile.barShowTargetName
+							end,
+							order = 10
 						},
 						barShowSpellName = {
 							type = "toggle",
@@ -1383,19 +1367,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barShowSpellName
 							end,
-							order = 10,
-							set = function(info, value)
-								profile.barShowSpellName = value
-								for _, cell in ipairs(frame.cells) do
-									for _, bar in ipairs(cell.bars) do
-										self:SetSpellBarStyle(bar)
-									end
-								end
-								--handle mergedcell
-								for _, bar in ipairs(frame.mergedcell.bars) do
-									self:SetSpellBarStyle(bar)
-								end
-							end
+							order = 15
 						},
 						barShowTime = {
 							type = "toggle",
@@ -1404,19 +1376,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barShowTime
 							end,
-							order = 15,
-							set = function(info, value)
-								profile.barShowTime = value
-								for _, cell in ipairs(frame.cells) do
-									for _, bar in ipairs(cell.bars) do
-										self:SetSpellBarStyle(bar)
-									end
-								end
-								--handle mergedcell
-								for _, bar in ipairs(frame.mergedcell.bars) do
-									self:SetSpellBarStyle(bar)
-								end
-							end
+							order = 20
 						},
 						barTextSide = {
 							type = "toggle",
@@ -1425,7 +1385,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barTextSide == "right"
 							end,
-							order = 20,
+							order = 25,
 							set = function(info, value)
 								if value == true then
 									profile.barTextSide = "right"
@@ -1456,7 +1416,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 									return profile.barIcon
 								end
 							end,
-							order = 25,
+							order = 30,
 							style = "dropdown",
 							set = function(info, value)
 								if profile.merged then
@@ -1482,7 +1442,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 						barCooldownStyle = {
 							type = "select",
 							name = L["Cooldown Style"],
-							order = 30,
+							order = 35,
 							style = "dropdown",
 							width = "full",
 							get = function(info)
@@ -1513,7 +1473,7 @@ function mod:GetViewOptionsTable(view) --REQUIRED
 							get = function(info)
 								return profile.barCooldownDirection == "left"
 							end,
-							order = 35,
+							order = 40,
 							set = function(info, value)
 								if value == true then
 									profile.barCooldownDirection = "left"
@@ -2880,7 +2840,7 @@ function mod:OnInstanceRemoved(view, ability, instance) --OPTIONAL
 	mergedbar.instance = nil
 
 	self:ReleaseBar(mergedbar)
-	_deleteFromIndexedTable(frame.mergedcell.bars, mergedbar)
+	_deleteIndexedTable(frame.mergedcell.bars, mergedbar)
 
 	------------------------------------------
 	--handle the regular cell
@@ -2890,7 +2850,7 @@ function mod:OnInstanceRemoved(view, ability, instance) --OPTIONAL
 	bar.instance = nil
 
 	self:ReleaseBar(bar)
-	_deleteFromIndexedTable(cell.bars, bar)
+	_deleteIndexedTable(cell.bars, bar)
 
 	--if overall cell visibility changed, then reposition cells
 	self:PositionCells(frame)
@@ -2962,6 +2922,14 @@ end
 
 function mod:OnInstanceStopCooldown(view, ability, instance) --OPTIONAL
 	local frame = view.frame
+
+	------------------------------------------
+	--remove target
+	------------------------------------------
+	if instance.target then
+		instance.target = nil
+		instance.targetClass = nil
+	end
 
 	------------------------------------------
 	--handle the merged cell
