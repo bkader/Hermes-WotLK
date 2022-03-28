@@ -1771,6 +1771,7 @@ end
 
 do
 	local msgTable = {}
+
 	function core:SendMessageToReceivers(recipientName, msgEnum, msgContent)
 		wipe(msgTable)
 		msgTable[1] = msgEnum
@@ -1794,11 +1795,15 @@ do
 			Hermes:SendCommMessage(HERMES_SEND_COMM, msg, channel, recipient, "NORMAL", nil, nil)
 		end
 	end
+end
+
+do
+	local msgTable = {}
 
 	function core:SendMessage_REQUEST_SPELLS(recipientName, trackerRequests)
 		wipe(msgTable)
 		msgTable[1] = trackerRequests
-		core:SendMessageToSenders(recipientName, core:GetMessageEnum("REQUEST_SPELLS"), {trackerRequests})
+		core:SendMessageToSenders(recipientName, core:GetMessageEnum("REQUEST_SPELLS"), msgTable)
 	end
 
 	function core:SendMessage_INITIALIZE_SENDER(recipientName)
