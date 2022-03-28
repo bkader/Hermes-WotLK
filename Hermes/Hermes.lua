@@ -1041,12 +1041,9 @@ function Hermes:OnReceiverComm(prefix, serialized, channel, sender)
 			local msgName = MESSAGE_ENUM[msgEnum]
 
 			if (msgName and msgName == "INITIALIZE_SENDER") then
-				local class = msgContent
-				core:ProcessMessage_INITIALIZE_SENDER(sender, class, channel)
+				core:ProcessMessage_INITIALIZE_SENDER(sender, msgContent, channel)
 			elseif (msgName and msgName == "UPDATE_SPELLS") then
-				local class = msgContent[1]
-				local trackerUpdates = msgContent[2]
-				core:ProcessMessage_UPDATE_SPELLS(sender, class, trackerUpdates, channel)
+				core:ProcessMessage_UPDATE_SPELLS(sender, msgContent[1], msgContent[2], channel)
 			end
 		else
 			error("Error deserializing message")
@@ -1070,8 +1067,7 @@ function Hermes:OnSenderComm(prefix, serialized, channel, sender)
 			local msgName = MESSAGE_ENUM[msgEnum]
 
 			if (msgName and msgName == "REQUEST_SPELLS") then
-				local trackerRequests = msgContent[1]
-				core:ProcessMessage_REQUEST_SPELLS(sender, trackerRequests, channel)
+				core:ProcessMessage_REQUEST_SPELLS(sender, msgContent[1], channel)
 			elseif (msgName and msgName == "INITIALIZE_RECEIVER") then
 				core:ProcessMessage_INITIALIZE_RECEIVER(sender, channel)
 			end
@@ -1106,7 +1102,7 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 
 		--There is more than one receiver interested in this spell that also requires an update, fire it off globally
 		if (trackerUpdates and #trackerUpdates > 0) then
-			core:SendMessage_UPDATE_SPELLS(nil, trackerUpdates)
+			-- core:SendMessage_UPDATE_SPELLS(nil, trackerUpdates) -- TODO: FIXME
 		end
 
 		--cleanup table
@@ -1135,9 +1131,10 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 		-- these individual receivers still need an update, a message is sent to each instead of spammed to everyone.
 		-- the performance boost here is that the sender and a few receivers take the hit instead of all the receivers (perhaps 25 of them!)
 		if (dirtyUpdates) then
-			for receiverName, trackerUpdates in pairs(dirtyUpdates) do
-				core:SendMessage_UPDATE_SPELLS(receiverName, trackerUpdates)
-			end
+			-- TODO: FIXME
+			-- for receiverName, trackerUpdates in pairs(dirtyUpdates) do
+			-- 	core:SendMessage_UPDATE_SPELLS(receiverName, trackerUpdates)
+			-- end
 		end
 
 		--wipe out table if exists
@@ -1148,7 +1145,7 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 	if (delay == COOLDOWN_SCAN_FREQUENCY_INITIAL) then
 		core:KillCooldownScanTimer()
 		core:StartCooldownScanTimer(COOLDOWN_SCAN_FREQUENCY)
-		print("|cFF00FF00Hermes|r: " .. L["now sending"])
+		-- print("|cFF00FF00Hermes|r: " .. L["now sending"]) -- TODO: FIXME
 	end
 end
 
@@ -1309,10 +1306,10 @@ function core:UpdateCommunicationsStatus()
 		core:AddSender(Player.name, Player.class, nil, Player.info)
 
 		--advertise self to receivers
-		core:SendMessage_INITIALIZE_SENDER(nil)
+		-- core:SendMessage_INITIALIZE_SENDER(nil) -- TODO: FIXME
 
 		if dbp.configMode == false then
-			print(format("|cFF00FF00Hermes|r: " .. L["queuing requests for %s seconds..."], tostring(COOLDOWN_SCAN_FREQUENCY_INITIAL)))
+			-- print(format("|cFF00FF00Hermes|r: " .. L["queuing requests for %s seconds..."], tostring(COOLDOWN_SCAN_FREQUENCY_INITIAL))) -- TODO: FIXME
 			core:StartCooldownScanTimer(COOLDOWN_SCAN_FREQUENCY_INITIAL)
 		else
 			core:StartCooldownScanTimer(COOLDOWN_SCAN_FREQUENCY)
@@ -1359,7 +1356,7 @@ function core:StartReceiving()
 	Hermes:RegisterComm(HERMES_RECEIVE_COMM, "OnReceiverComm")
 
 	--advertise receiver
-	core:SendMessage_INITIALIZE_RECEIVER(nil)
+	-- core:SendMessage_INITIALIZE_RECEIVER(nil) -- TODO: FIXME
 end
 
 function core:StopReceiving()
@@ -1514,10 +1511,8 @@ function core:HandleTrackerRequests(receiverName, trackerRequests)
 			--see if we know the tracker
 			for _, t in ipairs(Sender.Trackers) do
 				if (t.id == tid) then
-					--we know the tracker, see if we know the receiver
-					local receiver = t.receivers[receiverName]
 					--we don't know this receiver yet, add it
-					if (not receiver) then
+					if (not t.receivers[receiverName]) then
 						t.receivers[receiverName] = new()
 					end
 
@@ -1552,9 +1547,10 @@ function core:ProcessMessage_REQUEST_SPELLS(receiverName, TrackerRequests, chann
 end
 
 function core:ProcessMessage_INITIALIZE_RECEIVER(receiverName, channel)
-	if receiverName and receiverName ~= Player.name then
-		core:SendMessage_INITIALIZE_SENDER(receiverName)
-	end
+	-- TODO: FIXME
+	-- if receiverName and receiverName ~= Player.name then
+	-- 	core:SendMessage_INITIALIZE_SENDER(receiverName)
+	-- end
 end
 
 function core:Startup()
@@ -1780,7 +1776,7 @@ do
 		local msg = Hermes:Serialize(msgTable)
 		local channel, recipient = core:GetAppropriateMessageChannelAndRecipient(recipientName)
 		if channel and recipient then
-			Hermes:SendCommMessage(HERMES_RECEIVE_COMM, msg, channel, recipient, "NORMAL", nil, nil)
+			Hermes:SendCommMessage(HERMES_RECEIVE_COMM, msg, channel, recipient, "NORMAL")
 		end
 	end
 
@@ -1792,7 +1788,7 @@ do
 		local msg = Hermes:Serialize(msgTable)
 		local channel, recipient = core:GetAppropriateMessageChannelAndRecipient(recipientName)
 		if channel and recipient then
-			Hermes:SendCommMessage(HERMES_SEND_COMM, msg, channel, recipient, "NORMAL", nil, nil)
+			Hermes:SendCommMessage(HERMES_SEND_COMM, msg, channel, recipient, "NORMAL")
 		end
 	end
 end
@@ -2651,8 +2647,7 @@ function core:AddSpell(newSpellId, newSpellName, newSpellClass)
 		local id = core:EncodeAbilityId(newSpellId, "spell")
 		for i, spell in ipairs(dbp.spells) do
 			if (spell.id == id) then
-				local message = L["|cFFFF0000Hermes Warning|r"] .. " " .. L["spell has already been added"]
-				print(message)
+				print(L["|cFFFF0000Hermes Warning|r"] .. " " .. L["spell has already been added"])
 				return nil
 			end
 		end
@@ -2686,8 +2681,7 @@ function core:AddSpell(newSpellId, newSpellName, newSpellClass)
 
 		return 1
 	else
-		local message = L["|cFFFF0000Hermes Warning|r"] .. " " .. L["spell name or id not found"]
-		print(message)
+		print(L["|cFFFF0000Hermes Warning|r"] .. " " .. L["spell name or id not found"])
 		return nil
 	end
 end
@@ -4645,9 +4639,11 @@ function core:BlizOptionsTable_General()
 				get = function(info)
 					return dbp.sender.enabled
 				end,
-				disabled = function()
-					return dbp.configMode == true or dbp.enabled == false
-				end,
+				disabled = true,
+				-- TODO: FIXME
+				-- disabled = function()
+				-- 	return dbp.configMode == true or dbp.enabled == false
+				-- end,
 				order = 20,
 				set = "OnSetEnableSender"
 			},
@@ -4670,9 +4666,11 @@ function core:BlizOptionsTable_General()
 				get = function(info)
 					return dbp.receiver.enabled
 				end,
-				disabled = function()
-					return dbp.configMode == true or dbp.enabled == false
-				end,
+				disabled = true,
+				-- TODO: FIXME
+				-- disabled = function()
+				-- 	return dbp.configMode == true or dbp.enabled == false
+				-- end,
 				order = 35,
 				set = "OnSetEnableReceiver"
 			},

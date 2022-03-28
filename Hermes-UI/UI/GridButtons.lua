@@ -292,7 +292,7 @@ function mod:InitializeFrame(frame, profile)
 end
 
 function mod:UpdateButtonBorders(frame, cell)
-	if (cell) then
+	if (cell and cell.ability) then
 		local c = Hermes:GetClassColorRGB(cell.ability.class)
 		if LBF then
 			--backup the original color if not already exists
