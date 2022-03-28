@@ -160,7 +160,7 @@ function Compat.TablePool(mode)
 
 	-- attempts to retrieve a table from the cache
 	-- creates if if it doesn't exist.
-	local new = function()
+	local function new()
 		local t = next(pool) or {}
 		pool[t] = nil
 		return t
@@ -168,12 +168,12 @@ function Compat.TablePool(mode)
 
 	-- it will wipe the provided table then cache it
 	-- to be reusable later.
-	local del = function(t, recurse)
+	local function del(t, recurse)
 		if type(t) == "table" then
 			setmetatable(t, nil)
 			for k, v in pairs(t) do
 				if recurse and type(v) == "table" then
-					del(v)
+					del(v, recurse)
 				end
 				t[k] = nil
 			end

@@ -462,18 +462,11 @@ function Hermes:RegisterHermesPlugin(name, onEnable, onDisable, onSetProfile, on
 end
 
 function Hermes:IsSenderAvailable(sender)
-	--don't count visibility if sender is also player
-	if Player.name ~= sender.name then
-		if sender.visible and sender.online == true and sender.dead == false then
-			return true
-		end
-	else
-		--if you're here, then you're connected and in range :P
-		if sender.dead == false then
-			return true
-		end
+	if sender and Player.name ~= sender.name then
+		return (sender.visible and sender.online == true and sender.dead == false)
+	elseif sender then
+		return (sender.dead == false)
 	end
-
 	return false
 end
 
@@ -1101,7 +1094,10 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 			-- The point of this is to avoid sending a message to everyone when there is only one receiver interested in the spell, in which case a single message will be sent to the user
 			if (core:UpdateSenderCooldown(tracker) == true or ((tracker.dirtyReceivers and _tableCount(tracker.receivers) == #tracker.dirtyReceivers) and (tracker.dirtyReceivers and #tracker.dirtyReceivers > 1))) then
 				trackerUpdates = trackerUpdates or new()
-				tinsert(trackerUpdates, {tracker.id, tracker.duration})
+
+				local update = new()
+				update[1], update[2] = tracker.id, tracker.duration
+				tinsert(trackerUpdates, update)
 
 				--wipe out dirty receivers since a global send is going to be done
 				tracker.dirtyReceivers = nil
@@ -1126,7 +1122,9 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 					--add receiver if not already added
 					dirtyUpdates[receiverName] = dirtyUpdates[receiverName] or new()
 					--add the update to the receiver record
-					tinsert(dirtyUpdates[receiverName], {tracker.id, tracker.duration})
+					local update = new()
+					update[1], update[2] = tracker.id, tracker.duration
+					tinsert(dirtyUpdates[receiverName], update)
 				end
 
 				--wipe out dirty receivers for this tracker
@@ -1754,14 +1752,6 @@ function core:FindSpellName(class, spellid)
 	return spell
 end
 
-function core:SendMessageToReceivers(recipientName, msgEnum, msgContent)
-	local msg = Hermes:Serialize({msgEnum, msgContent})
-	local channel, recipient = core:GetAppropriateMessageChannelAndRecipient(recipientName)
-	if channel and recipient then
-		Hermes:SendCommMessage(HERMES_RECEIVE_COMM, msg, channel, recipient, "NORMAL", nil, nil)
-	end
-end
-
 function core:GetAppropriateMessageChannelAndRecipient(recipientName)
 	if (dbp.configMode == true) then
 		return "WHISPER", Player.name --in test mode, only send whispers to yourself
@@ -1779,31 +1769,52 @@ function core:GetAppropriateMessageChannelAndRecipient(recipientName)
 	end
 end
 
-function core:SendMessageToSenders(recipientName, msgEnum, msgContent)
-	local msg = Hermes:Serialize({msgEnum, msgContent})
-	local channel, recipient = core:GetAppropriateMessageChannelAndRecipient(recipientName)
-	if channel and recipient then
-		Hermes:SendCommMessage(HERMES_SEND_COMM, msg, channel, recipient, "NORMAL", nil, nil)
+do
+	local msgTable = {}
+	function core:SendMessageToReceivers(recipientName, msgEnum, msgContent)
+		wipe(msgTable)
+		msgTable[1] = msgEnum
+		msgTable[2] = msgContent
+
+		local msg = Hermes:Serialize(msgTable)
+		local channel, recipient = core:GetAppropriateMessageChannelAndRecipient(recipientName)
+		if channel and recipient then
+			Hermes:SendCommMessage(HERMES_RECEIVE_COMM, msg, channel, recipient, "NORMAL", nil, nil)
+		end
 	end
-end
 
-function core:SendMessage_REQUEST_SPELLS(recipientName, trackerRequests)
-	core:SendMessageToSenders(recipientName, core:GetMessageEnum("REQUEST_SPELLS"), {trackerRequests})
-end
+	function core:SendMessageToSenders(recipientName, msgEnum, msgContent)
+		wipe(msgTable)
+		msgTable[1] = msgEnum
+		msgTable[2] = msgContent
 
-function core:SendMessage_INITIALIZE_SENDER(recipientName)
-	core:SendMessageToReceivers(recipientName, core:GetMessageEnum("INITIALIZE_SENDER"), Player.class)
-end
+		local msg = Hermes:Serialize(msgTable)
+		local channel, recipient = core:GetAppropriateMessageChannelAndRecipient(recipientName)
+		if channel and recipient then
+			Hermes:SendCommMessage(HERMES_SEND_COMM, msg, channel, recipient, "NORMAL", nil, nil)
+		end
+	end
 
-function core:SendMessage_INITIALIZE_RECEIVER(recipientName)
-	core:SendMessageToSenders(recipientName, core:GetMessageEnum("INITIALIZE_RECEIVER"), nil)
-end
+	function core:SendMessage_REQUEST_SPELLS(recipientName, trackerRequests)
+		wipe(msgTable)
+		msgTable[1] = trackerRequests
+		core:SendMessageToSenders(recipientName, core:GetMessageEnum("REQUEST_SPELLS"), {trackerRequests})
+	end
 
-function core:SendMessage_UPDATE_SPELLS(recipientName, trackerUpdates)
-	core:SendMessageToReceivers(recipientName, core:GetMessageEnum("UPDATE_SPELLS"), {
-		Player.class,
-		trackerUpdates
-	})
+	function core:SendMessage_INITIALIZE_SENDER(recipientName)
+		core:SendMessageToReceivers(recipientName, core:GetMessageEnum("INITIALIZE_SENDER"), Player.class)
+	end
+
+	function core:SendMessage_INITIALIZE_RECEIVER(recipientName)
+		core:SendMessageToSenders(recipientName, core:GetMessageEnum("INITIALIZE_RECEIVER"), nil)
+	end
+
+	function core:SendMessage_UPDATE_SPELLS(recipientName, trackerUpdates)
+		wipe(msgTable)
+		msgTable[1] = Player.class
+		msgTable[2] = trackerUpdates
+		core:SendMessageToReceivers(recipientName, core:GetMessageEnum("UPDATE_SPELLS"), msgTable)
+	end
 end
 
 function core:SenderHasTracker(identifier)
@@ -2873,6 +2884,10 @@ function core:SetAbilityInstance(ability, sender, duration, target)
 		if target and target ~= sender.name then
 			instance.target = target
 			_, instance.targetClass = UnitClass(target)
+
+			-- add to ability
+			ability.target = instance.target
+			ability.targetClass = instance.targetClass
 		end
 
 		tinsert(AbilityInstances, instance)
@@ -2902,9 +2917,17 @@ function core:SetAbilityInstance(ability, sender, duration, target)
 		if target and target ~= sender.name then
 			instance.target = target
 			_, instance.targetClass = UnitClass(target)
+
+			-- add to ability
+			ability.target = instance.target
+			ability.targetClass = instance.targetClass
 		elseif instance.target then
 			instance.target = nil
 			instance.targetClass = nil
+
+			-- remove from ability
+			ability.target = nil
+			ability.targetClass = nil
 		end
 
 		--if it's on cooldown, then possibly start it

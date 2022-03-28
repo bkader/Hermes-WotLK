@@ -813,6 +813,7 @@ function mod:OnSenderDeadChanged(sender)
 end
 
 function mod:OnAbilityAdded(ability)
+	if not ability then return end
 	self:InsertHermesAbility(ability)
 	for _, view in ipairs(VIEWS) do
 		local profile = VIEW_PROFILES[view]
@@ -824,6 +825,7 @@ function mod:OnAbilityAdded(ability)
 end
 
 function mod:OnAbilityRemoved(ability)
+	if not ability then return end
 	--remove from views first
 	for _, view in ipairs(VIEWS) do
 		local profile = VIEW_PROFILES[view]
@@ -838,6 +840,7 @@ function mod:OnAbilityRemoved(ability)
 end
 
 function mod:OnAbilityAvailableSendersChanged(ability)
+	if not ability then return end
 	for _, view in ipairs(VIEWS) do
 		local profile = VIEW_PROFILES[view]
 		local info, _ = self:GetViewAbilityInfo(profile, ability.id)
@@ -852,6 +855,7 @@ function mod:OnAbilityAvailableSendersChanged(ability)
 end
 
 function mod:OnAbilityTotalSendersChanged(ability)
+	if not ability then return end
 	for _, view in ipairs(VIEWS) do
 		local profile = VIEW_PROFILES[view]
 		local info, _ = self:GetViewAbilityInfo(profile, ability.id)
@@ -866,6 +870,7 @@ function mod:OnAbilityTotalSendersChanged(ability)
 end
 
 function mod:OnInstanceAdded(instance) -- MODIFIED FOR FILTER
+	if not instance then return end
 	self:InsertHermesInstance(instance) --also wipes onupdate cache
 	local ability = instance.ability
 	for _, view in ipairs(VIEWS) do
@@ -880,7 +885,7 @@ function mod:OnInstanceAdded(instance) -- MODIFIED FOR FILTER
 end
 
 function mod:OnInstanceRemoved(instance) -- MODIFIED FOR FILTER
-	--no need to change sort?
+	if not instance or not instance.ability then return end
 
 	--remove from views first
 	local ability = instance.ability
@@ -899,6 +904,8 @@ function mod:OnInstanceRemoved(instance) -- MODIFIED FOR FILTER
 end
 
 function mod:OnInstanceStartCooldown(instance) -- MODIFIED FOR FILTER
+	if not instance or not instance.ability then return end
+
 	local ability = instance.ability
 	for _, view in ipairs(VIEWS) do
 		local profile = VIEW_PROFILES[view]
@@ -918,6 +925,7 @@ end
 
 --this caching strategy cuts the CPU usage of this method roughly in half vs. not caching
 function mod:OnInstanceUpdateCooldown(instance) -- MODIFIED FOR FILTER
+	if not instance then return end
 	local cache = ONINSTANCE_UPDATE_CACHE[instance]
 
 	if cache then --we've processed and cached this instance before
@@ -932,33 +940,36 @@ function mod:OnInstanceUpdateCooldown(instance) -- MODIFIED FOR FILTER
 		ONINSTANCE_UPDATE_CACHE[instance] = {}
 
 		local ability = instance.ability
-		for _, view in ipairs(VIEWS) do
-			local profile = VIEW_PROFILES[view]
-			local info, _ = self:GetViewAbilityInfo(profile, ability.id)
-			if info.enabled == true or profile.includeAll == true then
-				if VIEW_SENDERS[view][instance.sender] then --player filter check
-					--no need to change sort
-					local module = VIEW_MODULES[view]
-					local func = module.OnInstanceUpdateCooldown
-					if func and type(func) == "function" then
-						module:OnInstanceUpdateCooldown(view, ability, instance)
-						--create cache entry
-						local cache = ONINSTANCE_UPDATE_CACHE[instance]
-						if not cache.views then
-							cache.views = {}
+		if ability then
+			for _, view in ipairs(VIEWS) do
+				local profile = VIEW_PROFILES[view]
+				local info, _ = self:GetViewAbilityInfo(profile, ability.id)
+				if info.enabled == true or profile.includeAll == true then
+					if VIEW_SENDERS[view][instance.sender] then --player filter check
+						--no need to change sort
+						local module = VIEW_MODULES[view]
+						local func = module.OnInstanceUpdateCooldown
+						if func and type(func) == "function" then
+							module:OnInstanceUpdateCooldown(view, ability, instance)
+							--create cache entry
+							local cache = ONINSTANCE_UPDATE_CACHE[instance]
+							if not cache.views then
+								cache.views = {}
+							end
+							cache.views[view] = module
 						end
-						cache.views[view] = module
+					--view doesn't implement OnInstanceUpdateCooldown
 					end
-				--view doesn't implement OnInstanceUpdateCooldown
+				--view filtered out sender
 				end
-			--view filtered out sender
+				--view doesn't have spell enabled
 			end
-			--view doesn't have spell enabled
 		end
 	end
 end
 
 function mod:OnInstanceStopCooldown(instance) -- MODIFIED FOR FILTER
+	if not instance or not instance.ability then return end
 	local ability = instance.ability
 	for _, view in ipairs(VIEWS) do
 		local profile = VIEW_PROFILES[view]
@@ -980,6 +991,8 @@ end
 function mod:OnInstanceAvailabilityChanged(instance) -- MODIFIED FOR FILTER
 	--wipe the onupdate cache
 	_wipeOnUpdateCache()
+
+	if not instance or not instance.ability then return end
 
 	local ability = instance.ability
 	for _, view in ipairs(VIEWS) do
@@ -1296,7 +1309,7 @@ function mod:FireOnInstanceSortChanged(view, ability)
 end
 
 local function SortInstancesByPlayerName(view, a, b)
-	return a.sender.name < b.sender.name
+	return (a.sender and b.sender and a.sender.name < b.sender.name)
 end
 
 local function SortInstancesBySpellOrder(view, a, b)
