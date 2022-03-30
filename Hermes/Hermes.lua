@@ -122,6 +122,23 @@ local MESSAGE_ENUM = {
 	[4] = "UPDATE_SPELLS"
 }
 
+local RACES_TABLE = {
+	Alliance = {
+		Draenei = L["Draenei"],
+		Dwarf = L["Dwarf"],
+		Gnome = L["Gnome"],
+		Human = L["Human"],
+		["Night Elf"] = L["Night Elf"],
+	},
+	Horde = {
+		["Blood Elf"] = L["Blood Elf"],
+		Orc = L["Orc"],
+		Tauren = L["Tauren"],
+		Troll = L["Troll"],
+		Scourge = L["Scourge"],
+	}
+}
+
 local HERMES_SEND_COMM = "HermesS1"
 local HERMES_RECEIVE_COMM = "HermesR1"
 
@@ -154,8 +171,10 @@ local hero = (Hermes.Faction == "Alliance") and 32182 or 2825
 
 local DEFAULT_SPELLS = {
 	-- RACIAL TRAITS
+	{"ANY", 7744, "Horde"}, -- Will of the Forsaken
 	{"ANY", 20549, "Horde"}, -- War Stomp
 	{"ANY", 20572, "Horde"}, -- Blood Fury
+	{"ANY", 20589, "Alliance"}, -- Escape Artist
 	{"ANY", 20594, "Alliance"}, -- Stoneform
 	{"ANY", 25046, "Horde"}, -- Arcane Torrent
 	{"ANY", 26297, "Horde"}, -- Berserking
@@ -164,8 +183,6 @@ local DEFAULT_SPELLS = {
 	{"ANY", 58984, "Alliance"}, -- Shadowmeld
 	{"ANY", 59547, "Alliance"}, -- Gift of the Naaru
 	{"ANY", 59752, "Alliance"}, -- Every Man for Himself
-	{"ANY", 7744, "Horde"}, -- Will of the Forsaken
-	{"ANY", 20589, "Alliance"}, -- Escape Artist
 	-- DEATHKNIGHT
 	{"DEATHKNIGHT", 51052}, -- Anti-magic Zone
 	{"DEATHKNIGHT", 49222}, -- Bone Shield
@@ -1633,14 +1650,12 @@ function core:SetupNewProfileAbilities()
 end
 
 function core:SetupNewProfileSpells()
-	local playerAlliance = select(1, UnitFactionGroup("player"))
-
 	for i, default in ipairs(DEFAULT_SPELLS) do
 		local class = default[1]
 		local spellid = default[2]
-		local alliance = default[3]
+		local faction = default[3]
 
-		if (not alliance or (alliance and alliance == playerAlliance)) then
+		if not faction or faction == Hermes.Faction then
 			--make sure spell isn't already added
 			local exists = false
 			for _, s in ipairs(dbp.spells) do
@@ -1674,14 +1689,12 @@ function core:SetupNewProfileSpells()
 end
 
 function core:SetupNewProfileItems()
-	local playerAlliance = select(1, UnitFactionGroup("player"))
-
 	for i, default in ipairs(DEFAULT_ITEMS) do
 		local class = default[1]
 		local id = default[2]
-		local alliance = default[3]
+		local faction = default[3]
 
-		if (not alliance or (alliance and alliance == playerAlliance)) then
+		if not faction or faction == Hermes.Faction then
 			--make sure item isn't already added
 			local exists = false
 			for _, s in ipairs(dbp.items) do
@@ -2992,11 +3005,18 @@ end
 -- COMBAT LOG STUFF
 ------------------------------------------------------------------
 function core:ProcessRace(unit)
-	local race, nlrace = UnitRace(unit)
+	local race, raceEn = UnitRace(unit)
 	--todo, update spell monitor stuff?
-	if race and nlrace then
-		if not dbg.races[nlrace] then
-			dbg.races[nlrace] = race
+	if race and raceEn then
+		if dbg.races[raceEn] ~= race then
+			dbg.races[raceEn] = race
+		end
+	end
+	for _, t in pairs(RACES_TABLE) do
+		for k, v in pairs(t) do
+			if dbg.races[k] ~= v then
+				dbg.races[k] = race
+			end
 		end
 	end
 end
@@ -3221,8 +3241,9 @@ function core:CheckLevel(unit, level)
 	return UnitLevel(unit) >= level
 end
 
-function core:CheckRace(unit, race)
-	return UnitRace(unit) == race
+function core:CheckRace(unit, unitRace)
+	local race, raceEn = UnitRace(unit)
+	return (race == unitRace or raceEn == unitRace)
 end
 
 function core:CheckTalentName(guid, talentIndex)
@@ -3454,13 +3475,17 @@ local function refreshTalentLookups(class)
 
 		if dbg.classes then
 			local talentRoot = dbg.classes[class]
-			for i, name in ipairs(talentRoot.talents) do
-				_talentNameKeys[i] = name
-				_talentNameValues[i] = {index = i, name = name}
+			if talentRoot then
+				for i, name in ipairs(talentRoot.talents) do
+					_talentNameKeys[i] = name
+					_talentNameValues[i] = {index = i, name = name}
+				end
 			end
 
-			for _, v in pairs(SPECIALIZATION_IDS[class]) do
-				_specializations[v] = select(2, API.GetSpecializationInfoByID(v))
+			if SPECIALIZATION_IDS[class] then
+				for _, v in pairs(SPECIALIZATION_IDS[class]) do
+					_specializations[v] = select(2, API.GetSpecializationInfoByID(v))
+				end
 			end
 		end
 		--sort the values and keys by name
@@ -3842,13 +3867,13 @@ function core:BlizOptionsTable_SpellRequirements()
 				width = "normal",
 				hidden = REQUIREMENT_KEYS[newRequirementTemplate.type] ~= REQUIREMENT_KEYS.PLAYER_RACE,
 				values = function()
-					return dbg.races
+					return RACES_TABLE[Hermes.Faction]
 				end,
 				get = function(info)
 					return newRequirementTemplate.race
 				end,
 				set = function(info, value)
-					newRequirementTemplate.race = dbg.races[value]
+					newRequirementTemplate.race = value
 					self:BlizOptionsTable_Spells()
 				end
 			},
@@ -4558,7 +4583,6 @@ end
 function core:BlizOptionsTable_General()
 	if (optionTables.args.General.args) then
 		wipe(optionTables.args.General.args)
-		optionTables.args.General.args = {}
 	end
 
 	local instructionsText = L["Instructions"] .. " >>"
@@ -4790,13 +4814,12 @@ end
 function core:CreateMissingSpellList()
 	local result = {}
 	--create a list of missing spells
-	local playerAlliance = select(1, UnitFactionGroup("player"))
 	for i, default in ipairs(DEFAULT_SPELLS) do
 		local class = default[1]
 		local spellid = default[2]
-		local alliance = default[3]
+		local faction = default[3]
 
-		if (not alliance or (alliance and alliance == playerAlliance)) then
+		if not faction or faction == Hermes.Faction then
 			--see if spell exists
 			local exists = false
 			for _, s in ipairs(dbp.spells) do
@@ -4824,7 +4847,6 @@ local _expandTalentStatus = false
 function core:BlizOptionsTable_Maintenance()
 	if (optionTables.args.Maintenance.args) then
 		wipe(optionTables.args.Maintenance.args)
-		optionTables.args.Maintenance.args = {}
 	end
 
 	if _expandMissingSpells == false then
@@ -5089,21 +5111,11 @@ function core:BlizOptionsTable_Maintenance()
 					end,
 					func = function()
 						--wipe all the tables
-						if dbg.races then
-							dbg.races = {}
-						end
-						if dbg.classes then
-							dbg.classes = {}
-						end
-						if dbg.adjustments then
-							dbg.adjustments = {}
-						end
-						if dbg.requirements then
-							dbg.requirements = {}
-						end
-						if dbg.cooldowns then
-							dbg.cooldowns = {}
-						end
+						dbg.races = wipe(dbg.races or {})
+						dbg.classes = wipe(dbg.classes or {})
+						dbg.adjustments = wipe(dbg.adjustments or {})
+						dbg.requirements = wipe(dbg.requirements or {})
+						dbg.cooldowns = wipe(dbg.cooldowns or {})
 
 						Hermes:LoadTalentDatabase(true)
 
@@ -5179,7 +5191,6 @@ end
 function core:BlizOptionsTable_Spells()
 	if (optionTables.args.Spells.args) then
 		wipe(optionTables.args.Spells.args)
-		optionTables.args.Spells.args = {}
 	end
 
 	if CONFIGURE_SETTINGS.mode == "spellmonitor" then

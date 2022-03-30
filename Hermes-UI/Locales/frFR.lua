@@ -154,3 +154,15 @@ Features include:
 -- L["Bottom"] = "Bottom"
 -- L["Padding"] = "Padding"
 -- L["Top"] = "Top"
+
+
+L["Blood Elf"] = "Elfe de sang"
+L["Draenei"] = "Draeneï"
+L["Dwarf"] = "Nain"
+L["Gnome"] = "Gnome"
+L["Human"] = "Humain"
+L["Night Elf"] = "Elfe de la nuit"
+L["Orc"] = "Orc"
+L["Tauren"] = "Tauren"
+L["Troll"] = "Troll"
+L["Scourge"] = "Mort-vivant"

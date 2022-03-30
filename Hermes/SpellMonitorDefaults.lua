@@ -210,6 +210,25 @@ Hermes.SPELL_MONITOR_SCHEMA = {
 		[61999] = {{k = 10, level = 72}},
 		[64843] = {{k = 10, level = 80}},
 		[633] = {{k = 10, level = 10}},
+
+		-----------------------------------
+		-- Race Requirements
+		-----------------------------------
+
+		-- RACIALS
+		[7744] = {{k = 20, race = "Scourge"}}, -- Will of the Forsaken
+		[20549] = {{k = 20, race = "Tauren"}}, -- War Stomp
+		[20572] = {{k = 20, race = "Orc"}}, -- Blood Fury
+		[20589] = {{k = 20, race = "Gnome"}}, -- Escape Artist
+		[20594] = {{k = 20, race = "Dwarf"}}, -- Stoneform
+		[25046] = {{k = 20, race = "BloodElf"}}, -- Arcane Torrent
+		[26297] = {{k = 20, race = "Troll"}}, -- Berserking
+		[33697] = {{k = 20, race = "Orc"}}, -- Blood Fury
+		[33702] = {{k = 20, race = "Orc"}}, -- Blood Fury
+		[58984] = {{k = 20, race = "NightElf"}}, -- Shadowmeld
+		[59547] = {{k = 20, race = "Draenei"}}, -- Gift of the Naaru
+		[59752] = {{k = 20, race = "Human"}}, -- Every Man for Himself
+
 		-----------------------------------
 		-- Talent Requirements
 		-----------------------------------
@@ -319,6 +338,19 @@ Hermes.SPELL_MONITOR_SCHEMA = {
 		[33206] = {{k = 30, specialization = 256}}, -- Pain Suppression
 	},
 	["cooldowns"] = {
+		-- RACIALS
+		[7744] = 120, -- Will of the Forsaken
+		[20549] = 120, -- War Stomp
+		[20572] = 120, -- Blood Fury
+		[20589] = 105, -- Escape Artist
+		[20594] = 120, -- Stoneform
+		[25046] = 120, -- Arcane Torrent
+		[26297] = 180, -- Berserking
+		[33697] = 120, -- Blood Fury
+		[33702] = 120, -- Blood Fury
+		[58984] = 120, -- Shadowmeld
+		[59547] = 180, -- Gift of the Naaru
+		[59752] = 120, -- Every Man for Himself
 		-- DEATHKNIGHT
 		[51052] = 120, -- Anti-magic Zone
 		[49222] = 60, -- Bone Shield

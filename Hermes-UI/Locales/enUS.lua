@@ -158,3 +158,14 @@ L["Bar Location"] = true
 L["Bottom"] = true
 L["Padding"] = true
 L["Top"] = true
+
+L["Blood Elf"] = true
+L["Draenei"] = true
+L["Dwarf"] = true
+L["Gnome"] = true
+L["Human"] = true
+L["Night Elf"] = true
+L["Orc"] = true
+L["Tauren"] = true
+L["Troll"] = true
+L["Scourge"] = "Undead"
