@@ -112,10 +112,6 @@ Description: Fired when the online status of a sender changed.
 Description: Fired when a sender dies or comes back alive.
 ]]--
 
---[[ OnSenderAvailabilityChanged(sender)
-Description: Fired when any of visibility, online, or dead status changes.
-]]--
-
 --[[ OnPlayerGroupStatusChanged(isInGroup)
 Description: Fired when the player's raid/party status changes.
 ]]--

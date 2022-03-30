@@ -1,23 +1,11 @@
 local parent, ns = ...
 local Compat = ns.Compat
 
-local select = select
-local unpack = unpack
 local pairs, ipairs = pairs, ipairs
 local tinsert = table.insert
 local setmetatable = setmetatable
 local wipe = wipe
 local next = next
-
-function Compat.SafePack(...)
-	local t = {...}
-	t.n = select("#", ...)
-	return t
-end
-
-function Compat.SafeUnpack(t)
-	return unpack(t, 1, t.n)
-end
 
 function Compat.tLength(t)
 	local len = 0
@@ -49,14 +37,6 @@ function Compat.tCopy(to, from, ...)
 	end
 end
 
-function Compat.tInvert(t)
-	local inverted = {}
-	for k, v in pairs(t) do
-		inverted[v] = k
-	end
-	return inverted
-end
-
 function Compat.tIndexOf(t, item)
 	for i, v in ipairs(t) do
 		if item == v then
@@ -66,13 +46,12 @@ function Compat.tIndexOf(t, item)
 end
 
 function Compat.tContains(t, item)
-	return (Compat.tIndexOf(t, item) ~= nil)
-end
-
-function Compat.tAppendAll(tbl, elems)
-	for _, elem in ipairs(elems) do
-		tinsert(tbl, elem)
+	for _, v in pairs(t) do
+		if item == v then
+			return true
+		end
 	end
+	return false
 end
 
 local weaktable = {__mode = "v"}

@@ -13,6 +13,7 @@ local HERMES_VERSION_STRING = AddonName .. " " .. HERMES_VERSION
 
 local API = Hermes.Compat
 local C_Timer = API.C_Timer
+local tIndexOf = API.tIndexOf
 local GetNumGroupMembers = API.GetNumGroupMembers
 local GetNumSubgroupMembers = API.GetNumSubgroupMembers
 local IsInRaid = API.IsInRaid
@@ -685,10 +686,6 @@ do
 	Events["OnSenderVisibilityChanged"] = {}
 	Events["OnSenderOnlineChanged"] = {}
 	Events["OnSenderDeadChanged"] = {}
-	Events["OnSenderAvailabilityChanged"] = {}
-
-	--player
-	Events["OnPlayerGroupStatusChanged"] = {}
 
 	--abilities
 	Events["OnAbilityAdded"] = {}
@@ -739,8 +736,13 @@ function Hermes:PLAYER_ENTERING_WORLD() --used only for one time player initiali
 	end
 end
 
+local lastCheckGroup = nil --throttle group check.
 function Hermes:GROUP_ROSTER_UPDATE()
-	core:UpdateCommunicationsStatus()
+	local checkTime = GetTime()
+	if not lastCheckGroup or (checkTime - lastCheckGroup) > 0.25 then
+		lastCheckGroup = checkTime
+		core:UpdateCommunicationsStatus()
+	end
 end
 
 function Hermes:ACTIVE_TALENT_GROUP_CHANGED()
@@ -996,7 +998,7 @@ function Hermes:LoadTalentDatabase(reset)
 			if info then
 				for k, v in pairs(info) do
 					if v.name then
-						tinsert(dbClass.talents, v.name)
+						dbClass.talents[#dbClass.talents + 1] = v.name
 					end
 				end
 			end
@@ -1093,7 +1095,7 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 
 				local update = new()
 				update[1], update[2] = tracker.id, tracker.duration
-				tinsert(trackerUpdates, update)
+				trackerUpdates[#trackerUpdates + 1] = update
 
 				--wipe out dirty receivers since a global send is going to be done
 				tracker.dirtyReceivers = nil
@@ -1120,7 +1122,7 @@ function Hermes:OnUpdateSenderCooldowns(delay)
 					--add the update to the receiver record
 					local update = new()
 					update[1], update[2] = tracker.id, tracker.duration
-					tinsert(dirtyUpdates[receiverName], update)
+					dirtyUpdates[receiverName][#dirtyUpdates[receiverName] + 1] = update
 				end
 
 				--wipe out dirty receivers for this tracker
@@ -1195,7 +1197,7 @@ end
 function core:OnSpellMonitorStatusChanged()
 	if dbp.enabled == true and dbp.combatLogging == true and Player.battleground == false then
 		-- if not MOD_Reincarnation:IsEnabled() then
-		-- MOD_Reincarnation:Enable()
+		-- 	MOD_Reincarnation:Enable()
 		-- end
 
 		if not MOD_Talents:IsEnabled() then
@@ -1203,7 +1205,7 @@ function core:OnSpellMonitorStatusChanged()
 		end
 	else
 		-- if MOD_Reincarnation:IsEnabled() then
-		-- MOD_Reincarnation:Disable()
+		-- 	MOD_Reincarnation:Disable()
 		-- end
 
 		if MOD_Talents:IsEnabled() then
@@ -1225,10 +1227,12 @@ function core:UpdateCommunicationsStatus()
 	local wasInParty = Player.party
 	local wasInBattleground = Player.battleground
 
-	core:UpdatePlayerGroupStatus()
+	Player.raid = IsInRaid()
+	Player.party = (GetNumSubgroupMembers() > 0)
+	Player.battleground = (UnitInBattleground("player") ~= nil)
 
-	--this will enable/disable spell monitor mods as needed. Should be called after UpdatePlayerGroupStatus due to battleground status
-	self:OnSpellMonitorStatusChanged()
+	--this will enable/disable spell monitor mods as needed.
+	core:OnSpellMonitorStatusChanged()
 
 	--if we're in a battleground, then we need to now allow Hermes to run at all, regardless of anything else
 	--we also want to shutdown SpellMonitor support so as not to pick up tons of player talent info
@@ -1255,7 +1259,6 @@ function core:UpdateCommunicationsStatus()
 		end
 	end
 
-	local initSelfSender = false
 	--this is a special case required so that whenever we go from a party to a raid, or vice verse, that we reset sending and receiving.
 	--we can just stop it here if that's the case, and allow the code below to restart it if necessary
 	if
@@ -1271,6 +1274,7 @@ function core:UpdateCommunicationsStatus()
 	end
 
 	--start sending if needed
+	local initSelfSender = false
 	if dbp.enabled == true and ((dbp.sender.enabled == true and ((Player.party == true and dbp.enableparty == true) or Player.raid == true)) or dbp.configMode == true) then
 		if (Hermes:IsSending() == false) then
 			initSelfSender = true
@@ -1296,7 +1300,7 @@ function core:UpdateCommunicationsStatus()
 	----------------------------------------------------------------------------------------
 	-- It's very important that we add ourself after initializing BOTH sending and receiving
 	----------------------------------------------------------------------------------------
-	if initSelfSender == true then
+	if PLAYER_ENTERED_WORLD == true and initSelfSender == true then
 		if Player.name == nil then
 			core:InitializePlayer()
 		end
@@ -1330,14 +1334,14 @@ function core:StartReceiving()
 	for i, spell in ipairs(dbp.spells) do
 		if (spell.enabled and spell.enabled == true) then
 			core:StartTrackingAbility(spell, true) --true indicates to not send a message
-			tinsert(requests, spell.id)
+			requests[#requests + 1] = spell.id
 		end
 	end
 
 	for i, item in ipairs(dbp.items) do
 		if (item.enabled and item.enabled == true) then
 			core:StartTrackingAbility(item, true) --true indicates to not send a message
-			tinsert(requests, item.id)
+			requests[#requests + 1] = item.id
 		end
 	end
 
@@ -1375,7 +1379,7 @@ end
 
 function core:RequestAbilityUpdate(id)
 	local trackerRequests = new()
-	tinsert(trackerRequests, id)
+	trackerRequests[#trackerRequests + 1] = id
 	core:SendMessage_REQUEST_SPELLS(nil, trackerRequests)
 	del(trackerRequests)
 end
@@ -1410,7 +1414,7 @@ function core:HandleRemoteSender(senderName, class, resetIfExists)
 	for _, ability in ipairs(Abilities) do
 		--only add spells that apply to the class
 		if (ability.class == class or ability.class == "ANY") then
-			tinsert(requests, ability.id)
+			requests[#requests + 1] = ability.id
 		end
 	end
 
@@ -1520,7 +1524,7 @@ function core:HandleTrackerRequests(receiverName, trackerRequests)
 					if (not t.dirtyReceivers) then
 						t.dirtyReceivers = new()
 					end
-					tinsert(t.dirtyReceivers, receiverName)
+					t.dirtyReceivers[#t.dirtyReceivers + 1] = receiverName
 
 					tracker = t --mark spell for below...
 					break
@@ -1532,11 +1536,11 @@ function core:HandleTrackerRequests(receiverName, trackerRequests)
 				tracker = new()
 				tracker.id, tracker.receivers = tid, new()
 				tracker.receivers[receiverName] = new() --add the receiver to the spell
-				tinsert(Sender.Trackers, tracker) --add the spell
+				Sender.Trackers[#Sender.Trackers + 1] = tracker --add the spell
 
 				--mark this receiver as dirty
 				tracker.dirtyReceivers = new()
-				tinsert(tracker.dirtyReceivers, receiverName)
+				tracker.dirtyReceivers[#tracker.dirtyReceivers + 1] = receiverName
 			end
 		end
 	end
@@ -1651,7 +1655,7 @@ function core:SetupNewProfileSpells()
 				if (spell) then
 					--add to db
 					spell.enabled = false
-					tinsert(dbp.spells, spell)
+					dbp.spells[#dbp.spells + 1] = spell
 					--sort the spells
 					sort(dbp.spells, function(a, b) return core:SortProfileSpells(a, b) end)
 					--update spell monitor related data if available for this spell
@@ -1709,7 +1713,7 @@ function core:SetupNewProfileItems()
 					}
 
 					--add to db
-					tinsert(dbp.items, item)
+					dbp.items[#dbp.items + 1] = item
 
 					--sort the items
 					sort(dbp.items, function(a, b) return core:SortProfileItems(a, b) end)
@@ -1731,7 +1735,7 @@ end
 
 function core:FindSpellName(class, spellid)
 	--see if the spell exists
-	local name, _, icon, _, _, _, _, _, _ = GetSpellInfo(spellid)
+	local name, _, icon = GetSpellInfo(spellid)
 
 	if (not name or not icon) then
 		return nil
@@ -1799,22 +1803,22 @@ do
 	function core:SendMessage_REQUEST_SPELLS(recipientName, trackerRequests)
 		wipe(msgTable)
 		msgTable[1] = trackerRequests
-		core:SendMessageToSenders(recipientName, core:GetMessageEnum("REQUEST_SPELLS"), msgTable)
+		core:SendMessageToSenders(recipientName, tIndexOf(MESSAGE_ENUM, "REQUEST_SPELLS"), msgTable)
 	end
 
 	function core:SendMessage_INITIALIZE_SENDER(recipientName)
-		core:SendMessageToReceivers(recipientName, core:GetMessageEnum("INITIALIZE_SENDER"), Player.class)
+		core:SendMessageToReceivers(recipientName, tIndexOf(MESSAGE_ENUM, "INITIALIZE_SENDER"), Player.class)
 	end
 
 	function core:SendMessage_INITIALIZE_RECEIVER(recipientName)
-		core:SendMessageToSenders(recipientName, core:GetMessageEnum("INITIALIZE_RECEIVER"), nil)
+		core:SendMessageToSenders(recipientName, tIndexOf(MESSAGE_ENUM, "INITIALIZE_RECEIVER"), nil)
 	end
 
 	function core:SendMessage_UPDATE_SPELLS(recipientName, trackerUpdates)
 		wipe(msgTable)
 		msgTable[1] = Player.class
 		msgTable[2] = trackerUpdates
-		core:SendMessageToReceivers(recipientName, core:GetMessageEnum("UPDATE_SPELLS"), msgTable)
+		core:SendMessageToReceivers(recipientName, tIndexOf(MESSAGE_ENUM, "UPDATE_SPELLS"), msgTable)
 	end
 end
 
@@ -2031,13 +2035,25 @@ end
 --------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------
+
+local function RequestItem(itemId)
+	if itemId and itemId ~= nil and itemId ~= "" and itemId ~= 0 and strsub(itemId, 1, 1) ~= "s" then
+		print("requesting for", itemId)
+		GameTooltip:SetHyperlink("item:" .. itemId .. ":0:0:0:0:0:0:0")
+		GameTooltip:Hide()
+	end
+end
+
 function core:GetItemInfoFromPlayerCache(itemId, itemName)
 	local id, name, icon
 
 	if (itemId) then
-		name = GetItemInfo(itemId)
+		name, _, _, _, _, _, _, _, _, icon = GetItemInfo(itemId)
+		if not name then
+			RequestItem(itemId)
+			name, _, _, _, _, _, _, _, _, icon = GetItemInfo(itemId)
+		end
 		id = itemId
-		icon = GetItemIcon(itemId)
 	elseif (itemName) then
 		local link
 		name, link = GetItemInfo(itemName)
@@ -2068,15 +2084,6 @@ function core:GetItemInfo(requestid, requestname)
 	end
 
 	return id, name, icon
-end
-
-function core:GetMessageEnum(messageName)
-	for i, msg in ipairs(MESSAGE_ENUM) do
-		if (msg == messageName) then
-			return i
-		end
-	end
-	error("Failed to locate message enum")
 end
 
 function core:KillCooldownScanTimer()
@@ -2113,9 +2120,9 @@ do
 	function core:GetSpellID(spell)
 		wipe(matches)
 		for i = 1, 100000 do
-			local name, rank, icon, powerCost, _, powerType, castingTime, minRange, maxRange = GetSpellInfo(i)
+			local name = GetSpellInfo(i)
 			if name == spell then
-				tinsert(matches, i)
+				matches[#matches + 1] = i
 			end
 		end
 		return matches
@@ -2363,7 +2370,7 @@ function core:AddSender(name, class, virtual, info)
 	sender.virtual = virtual --tracks if external sender
 	sender.visible = nil
 	sender.info = info
-	tinsert(Senders, sender)
+	Senders[#Senders + 1] = sender
 
 	--update sender but do not allow events to be sent
 	core:UpdateSenderStatus(sender, nil)
@@ -2477,12 +2484,7 @@ function core:UpdateSenderStatus(sender, allowEvents)
 
 	--update availability changes
 	if _wasAvailable ~= _isAvailable then
-		--fire event about the sender status changing
-		if allowEvents then
-			core:FireEvent("OnSenderAvailabilityChanged", sender)
-		end
-
-		--now fire events for any ability and ability instances being tracked that belong to this sender
+		--fire events for any ability and ability instances being tracked that belong to this sender
 		if allowEvents then
 			for _, instance in ipairs(AbilityInstances) do
 				if (instance.sender == sender) then
@@ -2511,33 +2513,6 @@ function core:InitializePlayer()
 	Player.battleground = false
 
 	PLAYER_IS_WARLOCK = (Player.class == "WARLOCK")
-end
-
-function core:UpdatePlayerGroupStatus()
-	if (IsInRaid()) then
-		Player.raid = true
-	else
-		Player.raid = false
-	end
-
-	if (GetNumSubgroupMembers() > 0) then
-		Player.party = true
-	else
-		Player.party = false
-	end
-
-	if (UnitInBattleground("player") ~= nil) then
-		Player.battleground = true
-	else
-		Player.battleground = false
-	end
-
-	local isInGroup = Player.party == true or Player.raid == true or Player.battleground == true
-	local wasInGroup = Player.raid == true or Player.party == true or Player.battleground == true
-
-	if (wasInGroup == true and isInGroup == false) or (wasInGroup == false and isInGroup == true) then
-		core:FireEvent("OnPlayerGroupStatusChanged", isInGroup)
-	end
 end
 
 ------------------------------------------------------------------
@@ -2585,7 +2560,7 @@ function core:StartTrackingAbility(dbability, nosend) --message will only be sen
 		ability.icon = dbability.icon
 		ability.dbp = dbability
 		ability.created = GetTime() --track when this ability was created
-		tinsert(Abilities, ability)
+		Abilities[#Abilities + 1] = ability
 		core:FireEvent("OnAbilityAdded", ability)
 
 		if not nosend then
@@ -2626,7 +2601,7 @@ function core:AddSpell(newSpellId, newSpellName, newSpellClass)
 	local icon
 	local _
 	if (newSpellId) then
-		name, _, icon, _, _, _, _, _, _ = GetSpellInfo(newSpellId)
+		name, _, icon = GetSpellInfo(newSpellId)
 	else
 		--try to find the spell id for the given spell name
 		local matches = core:GetSpellID(newSpellName)
@@ -2634,7 +2609,7 @@ function core:AddSpell(newSpellId, newSpellName, newSpellClass)
 		if (matches and #matches > 0) then
 			--still need the icon
 			newSpellId = matches[1]
-			name, _, icon, _, _, _, _, _, _ = GetSpellInfo(newSpellId)
+			name, _, icon = GetSpellInfo(newSpellId)
 			if (#matches > 1) then
 				--there are more than one spellid from the name given, ask the user which they want to use
 				print(L["|cFFFF0000Hermes Warning|r"] .. " " .. L["multiple id's were found. The first id was chosen"])
@@ -2661,7 +2636,7 @@ function core:AddSpell(newSpellId, newSpellName, newSpellClass)
 		}
 
 		--add to db
-		tinsert(dbp.spells, spell)
+		dbp.spells[#dbp.spells + 1] = spell
 
 		--sort the spells
 		sort(dbp.spells, function(a, b) return core:SortProfileSpells(a, b) end)
@@ -2733,7 +2708,7 @@ function core:AddItem(newItemId, newItemName, newItemClass)
 		}
 
 		--add to db
-		tinsert(dbp.items, item)
+		dbp.items[#dbp.items + 1] = item
 
 		--sort the spells
 		sort(dbp.items, function(a, b) return core:SortProfileItems(a, b) end)
@@ -2889,7 +2864,7 @@ function core:SetAbilityInstance(ability, sender, duration, target)
 			ability.targetClass = instance.targetClass
 		end
 
-		tinsert(AbilityInstances, instance)
+		AbilityInstances[#AbilityInstances + 1] = instance
 
 		--fire off an added event since it's new
 		core:FireEvent("OnAbilityTotalSendersChanged", instance.ability) -- ADDED
@@ -2983,7 +2958,7 @@ function core:RemoveAbilityInstancesForAbility(ability)
 	--first find all the matches
 	for _, instance in ipairs(AbilityInstances) do
 		if instance.ability == ability then
-			tinsert(items, instance)
+			items[#items + 1] = instance
 		end
 	end
 
@@ -3001,7 +2976,7 @@ function core:RemoveAbilityInstancesForSender(sender)
 	--first find all the matches
 	for _, instance in ipairs(AbilityInstances) do
 		if instance.sender == sender then
-			tinsert(items, instance)
+			items[#items + 1] = instance
 		end
 	end
 
@@ -4035,7 +4010,7 @@ function core:BlizOptionsTable_SpellRequirements()
 					end
 
 					--store the requirement
-					tinsert(dbg.requirements[spellId], requirement)
+					dbg.requirements[spellId][#dbg.requirements[spellId] + 1] = requirement
 
 					--reset the template
 					ResetRequirementTemplate()
@@ -4416,7 +4391,7 @@ function core:BlizOptionsTable_SpellAdjustments()
 					end
 
 					--store the adjustment
-					tinsert(dbg.adjustments[spellId], adjustment)
+					dbg.adjustments[spellId][#dbg.adjustments[spellId] + 1] = adjustment
 
 					--reset the template
 					ResetAdjustmentTemplate()
@@ -4834,7 +4809,7 @@ function core:CreateMissingSpellList()
 			if (exists == false) then
 				local spell = core:FindSpellName(class, spellid)
 				if (spell) then
-					tinsert(result, spell)
+					result[#result + 1] = spell
 				end
 			end
 		end
@@ -4952,7 +4927,7 @@ function core:BlizOptionsTable_Maintenance()
 						func = function()
 							--add to db
 							spell.enabled = false
-							tinsert(dbp.spells, spell)
+							dbp.spells[#dbp.spells + 1] = spell
 							--sort the spells
 							sort(dbp.spells, function(a, b) return core:SortProfileSpells(a, b) end)
 							--update spell monitor related data if available for this spell
@@ -4967,7 +4942,7 @@ function core:BlizOptionsTable_Maintenance()
 					}
 				}
 			}
-			tinsert(list, item)
+			list[#list + 1] = item
 		end
 	end
 
@@ -5196,7 +5171,7 @@ function core:BlizOptionsTable_Maintenance()
 				}
 			}
 
-			tinsert(status, item)
+			status[#status + 1] = item
 		end
 	end
 end
@@ -5923,13 +5898,13 @@ function core:UpdateSMSSpellRequirements(id, class, replace)
 			for _, schemareq in ipairs(schemareqs) do
 				local k = schemareq.k
 				if k == REQUIREMENT_KEYS.PLAYER_LEVEL then
-					tinsert(requirements, {k = k, level = schemareq.level})
+					requirements[#requirements + 1] = {k = k, level = schemareq.level}
 				elseif k == REQUIREMENT_KEYS.TALENT_NAME then
 					local talents = dbg.classes[class]
 					if talents then --will be nil for "ALL" class
 						local talentIndex = schemareq.talentIndex -- talents.name[schemareq.talentIndex] --find the name of the talent by index
 						if talentIndex then
-							tinsert(requirements, {k = k, talentIndex = talentIndex})
+							requirements[#requirements + 1] = {k = k, talentIndex = talentIndex}
 						end
 					end
 				elseif k == REQUIREMENT_KEYS.TALENT_SPEC then
@@ -5937,7 +5912,7 @@ function core:UpdateSMSSpellRequirements(id, class, replace)
 					if talents then --will be nil for "ALL" class
 						local specializationId = schemareq.specialization
 						if specializationId then
-							tinsert(requirements, {k = k, specializationId = specializationId})
+							requirements[#requirements + 1] = {k = k, specializationId = specializationId}
 						end
 					end
 				end
@@ -5985,13 +5960,13 @@ function core:UpdateSMSSpellAdjustments(id, class, replace)
 			for _, schemaadj in ipairs(schemaadjs) do
 				local k = schemaadj.k
 				if k == ADJUSTMENT_KEYS.PLAYER_LEVEL then
-					tinsert(adjustments, {k = k, level = schemaadj.level, o = schemaadj.o})
+					adjustments[#adjustments + 1] = {k = k, level = schemaadj.level, o = schemaadj.o}
 				elseif k == ADJUSTMENT_KEYS.TALENT_NAME then
 					local talents = dbg.classes[class]
 					if talents then --will be nil for "ALL" class
 						local talname = talents.name[schemaadj.talname] --find the name of the talent by index
 						if talname then
-							tinsert(adjustments, {k = k, talname = talname, talrank = schemaadj.talrank, o = schemaadj.o})
+							adjustments[#adjustments + 1] = {k = k, talname = talname, talrank = schemaadj.talrank, o = schemaadj.o}
 						end
 					end
 				elseif k == ADJUSTMENT_KEYS.TALENT_SPEC then
@@ -5999,7 +5974,7 @@ function core:UpdateSMSSpellAdjustments(id, class, replace)
 					if talents then --will be nil for "ALL" class
 						local specialization = schemaadj.specialization
 						if specialization then
-							tinsert(adjustments, {k = k, specialization = specialization, offset = schemaadj.offset})
+							adjustments[#adjustments + 1] = {k = k, specialization = specialization, offset = schemaadj.offset}
 						end
 					end
 				end
