@@ -152,7 +152,7 @@ function Compat.TablePool(mode)
 			setmetatable(t, nil)
 			for k, v in pairs(t) do
 				if recurse and type(v) == "table" then
-					del(v, recurse)
+					del(v)
 				end
 				t[k] = nil
 			end
