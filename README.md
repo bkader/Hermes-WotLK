@@ -8,3 +8,15 @@ Hermes tracks your raid's cooldowns, and displays them using configurable button
 Hermes also tracks cooldowns of non Hermes users using it's **Spell Monitor** feature.
 
 ![buncho-of-hermes](https://user-images.githubusercontent.com/4732702/173257456-996492b6-2a72-461d-828b-2bc29123e406.jpg)
+
+
+## IMPORTANT: How to install
+
+1. [Download the package](https://github.com/bkader/Hermes-WotLK/archive/refs/heads/main.zip).
+2. Open the Zip package inside which you will find a single folder named `Hermes-WotLK-main`.
+3. Extract or drag and drop the two folders found inside: `Hermes` and `Hermes-UI` into your `Interface\AddOns` folder.
+4. Enjoy!
+
+## Show Love & Support
+
+Though it's not required, **PayPal** donations are most welcome at **bkader[at]mail.com**, or via GitHub Sponsor button.
