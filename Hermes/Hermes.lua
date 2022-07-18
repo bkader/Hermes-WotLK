@@ -377,6 +377,8 @@ local SHARED_COOLDOWNS = {}
 local COMBAT_LOGGING_INSTRUCTIONS = L["COMBAT_LOGGING_INSTRUCTIONS"]
 
 local function _tableIndex(tbl, item)
+	if not tbl then return end
+
 	for index, i in ipairs(tbl) do
 		if (i == item) then
 			return index
@@ -2894,6 +2896,8 @@ function core:SetAbilityInstance(ability, sender, duration, target)
 			core:FireEvent("OnAbilityAvailableSendersChanged", instance.ability) -- ADDED
 			core:FireEvent("OnAbilityInstanceStartCooldown", instance)
 		end
+
+		instance = del(instance)
 	else
 		--existing instance, update it to reflect changes
 		local lastRemaining = instance.remaining

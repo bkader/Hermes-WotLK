@@ -795,7 +795,7 @@ function mod:SortCells(frame)
 	sort(frame.cells, function(a, b)
 		local ia = _tableIndex(frame.view.abilities, a.ability)
 		local ib = _tableIndex(frame.view.abilities, b.ability)
-		return ia < ib
+		return (ia and ib and ia < ib)
 	end)
 end
 
@@ -1028,13 +1028,13 @@ function mod:SortBars(cell)
 				local instancesB = cell.frame.view.instances["all"]
 				local ia = _tableIndex(instancesA, a.instance)
 				local ib = _tableIndex(instancesB, b.instance)
-				return ia < ib
+				return (ia and ib and ia < ib)
 			else
 				local instancesA = cell.frame.view.instances[a.instance.ability]
 				local instancesB = cell.frame.view.instances[b.instance.ability]
 				local ia = _tableIndex(instancesA, a.instance)
 				local ib = _tableIndex(instancesB, b.instance)
-				return ia < ib
+				return (ia and ib and ia < ib)
 			end
 		end
 	)

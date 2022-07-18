@@ -929,7 +929,7 @@ function mod:SortCells(frame)
 	sort(frame.cells, function(a, b)
 		local ia = _tableIndex(frame.view.abilities, a.ability)
 		local ib = _tableIndex(frame.view.abilities, b.ability)
-		return ia < ib
+		return (ia and ib and ia < ib)
 	end)
 end
 
