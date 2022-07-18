@@ -7,7 +7,7 @@
 ## DefaultState: enabled
 ## Author: Kader (|cff808080bkader#6361|r)
 ## Version: 2.6.8
-## X-Date: 2022-03-18 @ 06:50 PM |cff808080UTC|r
+## X-Date: 2022-07-18 @ 06:55 AM |cff808080UTC|r
 ## X-Credits: Virtual (Virtual#1157 @ US-Alleria)
 ## X-Email: bkader@mail.com
 ## X-Website: https://github.com/bkader/Hermes-WotLK

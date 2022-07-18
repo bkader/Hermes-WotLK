@@ -1013,9 +1013,11 @@ function Hermes:LoadTalentDatabase(reset)
 		if #talents == 0 or reset == true then
 			local info = LGT.classTalentData[classTag]
 			if info then
-				for k, v in pairs(info) do
-					if v.name then
-						dbClass.talents[#dbClass.talents + 1] = v.name
+				for _, tree in pairs(info) do
+					for _, talent in pairs(tree) do
+						if talent.name then
+							dbClass.talents[#dbClass.talents + 1] = talent.name
+						end
 					end
 				end
 			end
@@ -3914,7 +3916,7 @@ function core:BlizOptionsTable_SpellRequirements()
 			level = {
 				type = "range",
 				min = 10,
-				max = 85,
+				max = 80,
 				step = 1,
 				name = L["Level"],
 				order = 15,
@@ -4274,7 +4276,7 @@ function core:BlizOptionsTable_SpellAdjustments()
 			level = {
 				type = "range",
 				min = 10,
-				max = 85,
+				max = 80,
 				step = 1,
 				name = L["Level"],
 				order = 15,
@@ -4313,7 +4315,7 @@ function core:BlizOptionsTable_SpellAdjustments()
 				width = "double",
 				order = 18,
 				fontSize = "medium",
-				hidden = not (tablelength(_specializations) == 0 and ADJUSTMENT_KEYS[newAdjustmentTemplate.type] == ADJUSTMENT_KEYS.TALENT_SPEC)
+				hidden = not (spell.class and dbg.classes[spell.class] and tablelength(dbg.classes[spell.class].talents) == 0 and ADJUSTMENT_KEYS[newAdjustmentTemplate.type] == ADJUSTMENT_KEYS.TALENT_NAME)
 			},
 			---------------------
 			-- TALENT NAME
@@ -4404,8 +4406,11 @@ function core:BlizOptionsTable_SpellAdjustments()
 						adjustment.specialization = newAdjustmentTemplate.specialization
 						adjustment.specializationName = _specializations[newAdjustmentTemplate.specialization]
 					elseif key == ADJUSTMENT_KEYS.TALENT_NAME then
-						adjustment.talentIndex = _talentNameKeys[newAdjustmentTemplate.talentIndex]
-						adjustment.talentName = _talentNameKeys[newAdjustmentTemplate.talentName]
+						-- TODO: Double Check!
+						-- adjustment.talentIndex = _talentNameKeys[newAdjustmentTemplate.talentIndex]
+						-- adjustment.talentName = _talentNameKeys[newAdjustmentTemplate.talentName]
+						adjustment.talentIndex = newAdjustmentTemplate.talentIndex
+						adjustment.talentName = newAdjustmentTemplate.talentName
 					else
 						error("unknown key")
 					end
@@ -4450,13 +4455,13 @@ function core:BlizOptionsTable_SpellAdjustments()
 				if key == ADJUSTMENT_KEYS.PLAYER_NAME then
 					adjustmentName = format(
 						L["Offset cooldown by |cFF00FF00%s|r if player name is |cFF00FF00%s|r"],
-						tostring(adjustment.o),
+						tostring(adjustment.offset),
 						tostring(adjustment.name)
 					)
 				elseif key == ADJUSTMENT_KEYS.PLAYER_LEVEL then
 					adjustmentName = format(
 						L["Offset cooldown by |cFF00FF00%s|r if player level is at least |cFF00FF00%s|r"],
-						tostring(adjustment.o),
+						tostring(adjustment.offset),
 						tostring(adjustment.level)
 					)
 				elseif key == ADJUSTMENT_KEYS.TALENT_SPEC then
@@ -4467,9 +4472,10 @@ function core:BlizOptionsTable_SpellAdjustments()
 					)
 				elseif key == ADJUSTMENT_KEYS.TALENT_NAME then
 					adjustmentName = format(
-						L["Offset cooldown by |cFF00FF00%s|r if player has |cFF00FF00%s|r or more points in |cFF00FF00"] .. tostring(adjustment.talname) .. "|r",
-						tostring(adjustment.o),
-						tostring(adjustment.talrank)
+						L["Offset cooldown by |cFF00FF00%s|r if player has |cFF00FF00%s|r or more points in |cFF00FF00"] .. tostring(adjustment.talentName) .. "|r",
+						tostring(adjustment.offset),
+						tostring(1)
+						-- tostring(adjustment.talrank) -- TODO: FIXME
 					)
 				else
 					error("unknown key")
@@ -5971,13 +5977,13 @@ function core:UpdateSMSSpellAdjustments(id, class, replace)
 			for _, schemaadj in ipairs(schemaadjs) do
 				local k = schemaadj.k
 				if k == ADJUSTMENT_KEYS.PLAYER_LEVEL then
-					adjustments[#adjustments + 1] = {k = k, level = schemaadj.level, o = schemaadj.o}
+					adjustments[#adjustments + 1] = {k = k, level = schemaadj.level, offset = schemaadj.offset}
 				elseif k == ADJUSTMENT_KEYS.TALENT_NAME then
 					local talents = dbg.classes[class]
 					if talents then --will be nil for "ALL" class
-						local talname = talents.name[schemaadj.talname] --find the name of the talent by index
+						local talname = talents.name[schemaadj.talentName] --find the name of the talent by index
 						if talname then
-							adjustments[#adjustments + 1] = {k = k, talname = talname, talrank = schemaadj.talrank, o = schemaadj.o}
+							adjustments[#adjustments + 1] = {k = k, talentName = talname, --[[talrank = schemaadj.talrank, ]]offset = schemaadj.offset}
 						end
 					end
 				elseif k == ADJUSTMENT_KEYS.TALENT_SPEC then
