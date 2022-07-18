@@ -1055,63 +1055,64 @@ function mod:RefreshTooltip()
 
 			for _, instance in ipairs(instances) do
 				local sender = instance.sender
-
-				local iconDead
-				if (sender.dead) then
-					iconDead = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
-				else
-					iconDead = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
-				end
-
-				local iconOnline
-				if (sender.online == true) then
-					iconOnline = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
-				else
-					iconOnline = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
-				end
-
-				local iconRange
-				if sender.visible then
-					iconRange = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
-				else
-					iconRange = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
-				end
-
-				local h, m, s = _secondsToClock(instance.remaining)
-				local durationText, timeLeft
-
-				if not h and not m and not s then
-					--no remaining
-					timeLeft = nil
-				elseif h then
-					timeLeft = format("%d:%02.f:%02.f", h, m, s)
-				elseif m then
-					timeLeft = format("%d:%02.f", m, s)
-				else
-					timeLeft = format("%d", s)
-				end
-
-				if sender.dead == true or sender.online == false or not sender.visible then
-					--special case if the user is not connected, dead, or not visible
-					if (instance.remaining) then
-						durationText = "|cFFFF0000" .. timeLeft .. "|r" --red
+				if sender then
+					local iconDead
+					if (sender.dead) then
+						iconDead = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
 					else
-						durationText = "|cFFFF0000" .. L["Ready"] .. "|r" --red
+						iconDead = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
 					end
-				elseif (instance.remaining == nil) then
-					durationText = "|cFF00FF00" .. L["Ready"] .. "|r" --green
-				elseif (instance.remaining < 10) then
-					durationText = "|cFFFFFF00" .. timeLeft .. "|r" --yellow
-				else
-					durationText = "|cFFFF0000" .. timeLeft .. "|r" --red
-				end
 
-				local target = L["None"]
-				if instance.target then
-					target = Hermes:GetClassColorString(instance.target, instance.targetClass)
-				end
+					local iconOnline
+					if (sender.online == true) then
+						iconOnline = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+					else
+						iconOnline = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+					end
 
-				ToolTip:AddLine(Hermes:GetClassColorString(sender.name, sender.class), durationText, iconDead, iconOnline, iconRange, target)
+					local iconRange
+					if sender.visible then
+						iconRange = "|T" .. ICON_STATUS_READY .. ":0:0:0:0|t"
+					else
+						iconRange = "|T" .. ICON_STATUS_NOTREADY .. ":0:0:0:0|t"
+					end
+
+					local h, m, s = _secondsToClock(instance.remaining)
+					local durationText, timeLeft
+
+					if not h and not m and not s then
+						--no remaining
+						timeLeft = nil
+					elseif h then
+						timeLeft = format("%d:%02.f:%02.f", h, m, s)
+					elseif m then
+						timeLeft = format("%d:%02.f", m, s)
+					else
+						timeLeft = format("%d", s)
+					end
+
+					if sender.dead == true or sender.online == false or not sender.visible then
+						--special case if the user is not connected, dead, or not visible
+						if (instance.remaining) then
+							durationText = "|cFFFF0000" .. timeLeft .. "|r" --red
+						else
+							durationText = "|cFFFF0000" .. L["Ready"] .. "|r" --red
+						end
+					elseif (instance.remaining == nil) then
+						durationText = "|cFF00FF00" .. L["Ready"] .. "|r" --green
+					elseif (instance.remaining < 10) then
+						durationText = "|cFFFFFF00" .. timeLeft .. "|r" --yellow
+					else
+						durationText = "|cFFFF0000" .. timeLeft .. "|r" --red
+					end
+
+					local target = L["None"]
+					if instance.target then
+						target = Hermes:GetClassColorString(instance.target, instance.targetClass)
+					end
+
+					ToolTip:AddLine(Hermes:GetClassColorString(sender.name, sender.class), durationText, iconDead, iconOnline, iconRange, target)
+				end
 			end
 		end
 

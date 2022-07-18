@@ -257,14 +257,14 @@ function mod:InitBar(frame, bar, instance) --sets all necessary first time value
 	LIBBars:SetFontColorDuration(bar, 1, 1, 1, 1)
 	LIBBars:SetFont(bar, font, profile.fontsize, true)
 
-	if profile.barShowTargetName and instance.target then
-		bar.text:SetText(playername .. " > " ..Hermes:GetClassColorString(instance.target, instance.targetClass))
-	elseif profile.barShowSpellName == true then
-		bar.text:SetText(playername .. " - " .. instance.ability.name)
-	else
-		bar.text:SetText(playername)
+	local text = playername
+	if profile.barShowSpellName and instance.ability.name then
+		text = format("%s - %s", text, instance.ability.name)
 	end
-
+	if profile.barShowTargetName and instance.target then
+		text = format("%s > %s", text, Hermes:GetClassColorString(instance.target, instance.targetClass))
+	end
+	bar.text:SetText(text)
 	bar.duration:SetText("")
 
 	--bar may or may not be visible, depends on whether this was called from ReinitBars

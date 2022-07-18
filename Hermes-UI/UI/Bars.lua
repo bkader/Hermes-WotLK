@@ -720,18 +720,18 @@ function mod:GetSpellBarNameText(bar)
 	local profile = bar.cell.frame.profile
 
 	local text = ""
-
-	if profile.barShowPlayerName == true and profile.barShowTargetName == true then
+	if profile.barShowPlayerName then
 		text = bar.instance.sender.name
-		if bar.instance.target then
-			text = text .. " > " .. Hermes:GetClassColorString(bar.instance.target, bar.instance.targetClass)
+	end
+	if profile.barShowSpellName and bar.instance.ability.name then
+		text = (text == "") and bar.instance.ability.name or format("%s - %s", text, bar.instance.ability.name)
+	end
+	if profile.barShowTargetName and bar.instance.target then
+		if text == "" then
+			text = Hermes:GetClassColorString(bar.instance.target, bar.instance.targetClass)
+		else
+			text = format("%s > %s", text, Hermes:GetClassColorString(bar.instance.target, bar.instance.targetClass))
 		end
-	elseif profile.barShowPlayerName == true and profile.barShowSpellName == true then
-		text = bar.instance.sender.name .. " - " .. bar.instance.ability.name
-	elseif profile.barShowPlayerName == true and profile.barShowSpellName == false then
-		text = bar.instance.sender.name
-	elseif profile.barShowPlayerName == false and profile.barShowSpellName == true then
-		text = bar.instance.ability.name
 	end
 
 	return text
