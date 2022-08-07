@@ -483,9 +483,9 @@ end
 
 function Hermes:IsSenderAvailable(sender)
 	if sender and Player.name ~= sender.name then
-		return (sender.visible and sender.online == true and sender.dead == false)
+		return (sender.visible and sender.online and not sender.dead)
 	elseif sender then
-		return (sender.dead == false)
+		return not (sender.dead)
 	end
 	return false
 end
