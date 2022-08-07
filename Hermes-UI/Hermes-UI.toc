@@ -4,7 +4,7 @@
 ## RequiredDeps: Hermes
 ## LoadOnDemand: 0
 ## DefaultState: enabled
-## Author: Kader (|cff808080bkader#6361|r)
+## Author: Kader (|cff808080bkader#5341|r)
 ## X-Credits: Virtual (Virtual#1157 @ US-Alleria)
 
 Locales\Locales.xml

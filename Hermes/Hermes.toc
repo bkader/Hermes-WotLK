@@ -5,7 +5,7 @@
 ## LoadOnDemand: 0
 ## SavedVariables: HermesDB
 ## DefaultState: enabled
-## Author: Kader (|cff808080bkader#6361|r)
+## Author: Kader (|cff808080bkader#5341|r)
 ## Version: 2.6.8
 ## X-Date: 2022-07-18 @ 06:51 PM |cff808080UTC|r
 ## X-Credits: Virtual (Virtual#1157 @ US-Alleria)
